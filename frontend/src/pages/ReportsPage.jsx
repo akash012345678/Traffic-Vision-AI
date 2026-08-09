@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -30,12 +31,17 @@ import {
   FaExchangeAlt,
   FaArrowUp,
   FaArrowDown,
-  FaMinus
+  FaMinus,
+  FaLightbulb,
+  FaShieldAlt,
+  FaRoute,
+  FaInfoCircle,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 
 export const ReportsPage = () => {
   const { showError, showSuccess } = useToast();
-  const [activeTab, setActiveTab] = useState('reports'); // 'reports' or 'trends'
+  const [activeTab, setActiveTab] = useState('reports'); // 'reports', 'trends', 'recommendations'
 
   // Operational & Telemetry Report States
   const [operationalReports, setOperationalReports] = useState(null);
@@ -52,6 +58,11 @@ export const ReportsPage = () => {
   const [trendTimeRange, setTrendTimeRange] = useState('24h');
   const [trendData, setTrendData] = useState(null);
   const [isTrendLoading, setIsTrendLoading] = useState(false);
+
+  // Recommendation Engine States
+  const [recommendationList, setRecommendationList] = useState([]);
+  const [recCategoryFilter, setRecCategoryFilter] = useState('ALL');
+  const [isRecLoading, setIsRecLoading] = useState(false);
 
   const fetchAllReports = async (isManual = false) => {
     setIsLoading(true);
@@ -103,6 +114,19 @@ export const ReportsPage = () => {
     }
   };
 
+  const fetchRecommendations = async () => {
+    setIsRecLoading(true);
+    try {
+      const res = await apiClient.get('/reports/traffic/recommendations');
+      setRecommendationList(res?.recommendations || []);
+    } catch (err) {
+      console.error("Recommendation fetch error:", err);
+      showError(err.message || 'Failed to load AI traffic recommendations');
+    } finally {
+      setIsRecLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAllReports();
   }, [selectedZone, selectedCongestion, selectedRoadId]);
@@ -110,6 +134,8 @@ export const ReportsPage = () => {
   useEffect(() => {
     if (activeTab === 'trends') {
       fetchTrafficTrends();
+    } else if (activeTab === 'recommendations') {
+      fetchRecommendations();
     }
   }, [activeTab, trendRoadId, trendTimeRange]);
 
@@ -158,6 +184,12 @@ export const ReportsPage = () => {
   const trendSummary = trendData?.trend_summary || {};
   const timeSeries = trendData?.time_series || [];
 
+  // Filter recommendations by category
+  const filteredRecommendations = recommendationList.filter((rec) => {
+    if (recCategoryFilter === 'ALL') return true;
+    return rec.recommendation_type === recCategoryFilter;
+  });
+
   return (
     <DashboardLayout role="Admin">
       <div className="space-y-6 animate-fade-in w-full">
@@ -170,13 +202,13 @@ export const ReportsPage = () => {
               <span>AI Traffic Analytics & System Reports</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Enterprise Control Center: Comprehensive traffic volume, speed analytics, vehicle class distributions, and time-series trend analysis.
+              Enterprise Control Center: Comprehensive traffic volume, speed analytics, vehicle class distributions, trends, and AI-driven traffic advisories.
             </p>
           </div>
 
           <div className="flex items-center space-x-3">
-            <Button variant="secondary" size="sm" onClick={() => { fetchAllReports(true); if(activeTab==='trends') fetchTrafficTrends(); }} className="space-x-1.5">
-              <FaSync className={(isLoading || isTrendLoading) ? 'animate-spin' : ''} />
+            <Button variant="secondary" size="sm" onClick={() => { fetchAllReports(true); if(activeTab==='trends') fetchTrafficTrends(); if(activeTab==='recommendations') fetchRecommendations(); }} className="space-x-1.5">
+              <FaSync className={(isLoading || isTrendLoading || isRecLoading) ? 'animate-spin' : ''} />
               <span>Refresh Metrics</span>
             </Button>
             <Button size="sm" onClick={handleExportCSV} className="space-x-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold">
@@ -211,6 +243,18 @@ export const ReportsPage = () => {
             <FaChartLine />
             <span>Traffic Trend Analysis</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('recommendations')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center space-x-2 transition-all ${
+              activeTab === 'recommendations'
+                ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <FaLightbulb className="text-amber-400" />
+            <span>AI Traffic Recommendations</span>
+          </button>
         </div>
 
         {/* Data Source Notice Banner */}
@@ -235,8 +279,6 @@ export const ReportsPage = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                
-                {/* Total Vehicle Volume */}
                 <Card className="hover:border-teal-500/40 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -252,7 +294,6 @@ export const ReportsPage = () => {
                   </div>
                 </Card>
 
-                {/* Average Network Speed */}
                 <Card className="hover:border-sky-500/40 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -268,7 +309,6 @@ export const ReportsPage = () => {
                   </div>
                 </Card>
 
-                {/* Active Operators & Roster */}
                 <Card className="hover:border-emerald-500/40 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -284,7 +324,6 @@ export const ReportsPage = () => {
                   </div>
                 </Card>
 
-                {/* Coverage Rate */}
                 <Card className="hover:border-amber-500/40 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -299,55 +338,8 @@ export const ReportsPage = () => {
                     </div>
                   </div>
                 </Card>
-
               </div>
             )}
-
-            {/* Multi-Criteria Filter Controls */}
-            <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center space-x-2 text-xs font-mono text-slate-300">
-                <FaFilter className="text-teal-400" />
-                <span>REPORT FILTERS:</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Zone Filter */}
-                <select
-                  value={selectedZone}
-                  onChange={(e) => setSelectedZone(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs font-mono focus:outline-none focus:border-teal-500"
-                >
-                  <option value="ALL">All Zones</option>
-                  <option value="Zone Alpha">Zone Alpha - Financial District</option>
-                  <option value="Zone Beta">Zone Beta - Midtown Hub</option>
-                  <option value="Zone Gamma">Zone Gamma - Harbor Expressway</option>
-                  <option value="Suburban">Suburban Arterial</option>
-                </select>
-
-                {/* Congestion Level Filter */}
-                <select
-                  value={selectedCongestion}
-                  onChange={(e) => setSelectedCongestion(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs font-mono focus:outline-none focus:border-teal-500"
-                >
-                  <option value="ALL">All Congestion Levels</option>
-                  <option value="LOW">LOW Congestion</option>
-                  <option value="MODERATE">MODERATE Congestion</option>
-                  <option value="HIGH">HIGH Congestion</option>
-                  <option value="CRITICAL">CRITICAL / SEVERE</option>
-                </select>
-
-                {/* Clear Filters Button */}
-                {(selectedZone !== 'ALL' || selectedCongestion !== 'ALL' || selectedRoadId !== 'ALL') && (
-                  <button
-                    onClick={handleClearFilters}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-bold transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* ROAD-WISE TELEMETRY REPORT TABLE */}
             <Card title="Corridor Performance & Telemetry Report" subtitle="Road-level vehicle volume, speed metrics, vehicle composition splits, and congestion status">
@@ -403,87 +395,12 @@ export const ReportsPage = () => {
                 </div>
               )}
             </Card>
-
-            {/* CONGESTION DISTRIBUTION & TIME-SERIES TELEMETRY TIMELINE */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
-              {/* Congestion Distribution Summary (4 cols) */}
-              <Card title="Congestion Distribution" subtitle="System-wide congestion severity splits" className="lg:col-span-4">
-                <div className="space-y-3 font-mono text-xs pt-2">
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-sans font-semibold text-emerald-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> LOW CONGESTION
-                    </span>
-                    <strong className="text-slate-100 text-sm font-extrabold">{congestionDist.LOW ?? 0} corridors</strong>
-                  </div>
-
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-sans font-semibold text-amber-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> MODERATE TRAFFIC
-                    </span>
-                    <strong className="text-slate-100 text-sm font-extrabold">{congestionDist.MODERATE ?? 0} corridors</strong>
-                  </div>
-
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-sans font-semibold text-orange-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" /> HIGH DENSITY
-                    </span>
-                    <strong className="text-slate-100 text-sm font-extrabold">{congestionDist.HIGH ?? 0} corridors</strong>
-                  </div>
-
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-sans font-semibold text-rose-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" /> CRITICAL / SEVERE
-                    </span>
-                    <strong className="text-slate-100 text-sm font-extrabold">{congestionDist.CRITICAL ?? 0} corridors</strong>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Time-Based Telemetry Timeline (8 cols) */}
-              <Card title="Chronological Telemetry Snapshot Timeline" subtitle="Time-series historical telemetry log from database" className="lg:col-span-8">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="text-[11px] uppercase bg-slate-900/90 text-slate-400 border-b border-slate-800">
-                      <tr>
-                        <th className="py-2.5 px-3">Timestamp</th>
-                        <th className="py-2.5 px-3">Corridor</th>
-                        <th className="py-2.5 px-3 text-right">Volume</th>
-                        <th className="py-2.5 px-3 text-right">Speed</th>
-                        <th className="py-2.5 px-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-mono">
-                      {trafficReports?.telemetry_timeline?.slice(0, 8).map((tl, idx) => (
-                        <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
-                          <td className="py-2.5 px-3 text-slate-400 flex items-center gap-1.5">
-                            <FaClock className="text-teal-400 text-xs shrink-0" />
-                            <span>{new Date(tl.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                          </td>
-                          <td className="py-2.5 px-3 font-bold text-slate-100 font-sans">{tl.road_name} ({tl.road_code})</td>
-                          <td className="py-2.5 px-3 text-teal-400 font-bold text-right">{tl.vehicle_count} veh</td>
-                          <td className="py-2.5 px-3 text-sky-400 font-bold text-right">{tl.average_speed} km/h</td>
-                          <td className="py-2.5 px-3 text-center font-sans">
-                            <StatusBadge 
-                              status={tl.congestion_level} 
-                              type={tl.congestion_level === 'HIGH' || tl.congestion_level === 'CRITICAL' ? 'red' : tl.congestion_level === 'MODERATE' ? 'amber' : 'green'} 
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
-            </div>
           </div>
         )}
 
         {/* TAB 2: TRAFFIC TREND ANALYSIS */}
         {activeTab === 'trends' && (
           <div className="space-y-6 animate-fade-in">
-            
             {/* Trend Filter Bar */}
             <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center space-x-2 text-xs font-mono text-slate-300">
@@ -492,7 +409,6 @@ export const ReportsPage = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                {/* Select Specific Road Corridor */}
                 <select
                   value={trendRoadId}
                   onChange={(e) => setTrendRoadId(e.target.value)}
@@ -506,7 +422,6 @@ export const ReportsPage = () => {
                   ))}
                 </select>
 
-                {/* Select Time Range */}
                 <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-[11px] font-mono">
                   {['1h', '6h', '24h', '7d'].map((range) => (
                     <button
@@ -525,10 +440,8 @@ export const ReportsPage = () => {
               </div>
             </div>
 
-            {/* Dynamic Analytical Trend Summary Cards (Calculated strictly from DB readings) */}
+            {/* Dynamic Analytical Trend Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Volume Trend Card */}
               <Card className="p-4 border-l-4 border-l-teal-500">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase font-bold text-slate-400">VEHICLE VOLUME TREND</span>
@@ -537,40 +450,20 @@ export const ReportsPage = () => {
                 <p className="text-xs text-slate-200 mt-2 font-sans font-medium leading-relaxed">
                   {trendSummary.volume_summary || 'Calculating volume changes...'}
                 </p>
-                <span className="text-[10px] text-teal-400 font-mono mt-2 block">
-                  Corridor: {trendData?.selected_road_name || 'Selected Network'}
-                </span>
               </Card>
 
-              {/* Speed Direction Card */}
               <Card className="p-4 border-l-4 border-l-sky-500">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase font-bold text-slate-400">SPEED DYNAMICS</span>
-                  <div className="flex items-center space-x-1">
-                    {trendSummary.speed_direction === 'increasing' ? (
-                      <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
-                        <FaArrowUp /> INCREASING
-                      </span>
-                    ) : trendSummary.speed_direction === 'decreasing' ? (
-                      <span className="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
-                        <FaArrowDown /> DECREASING
-                      </span>
-                    ) : (
-                      <span className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
-                        <FaMinus /> STABLE
-                      </span>
-                    )}
-                  </div>
+                  <span className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded text-[10px] font-bold">
+                    {trendSummary.speed_direction?.toUpperCase() || 'STABLE'}
+                  </span>
                 </div>
                 <p className="text-xs text-slate-200 mt-2 font-sans font-medium leading-relaxed">
                   {trendSummary.speed_summary || 'Analyzing speed velocity...'}
                 </p>
-                <span className="text-[10px] text-sky-400 font-mono mt-2 block">
-                  Time Horizon: {trendTimeRange.toUpperCase()}
-                </span>
               </Card>
 
-              {/* Congestion Transition Card */}
               <Card className="p-4 border-l-4 border-l-amber-500">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase font-bold text-slate-400">CONGESTION TRANSITION</span>
@@ -579,17 +472,11 @@ export const ReportsPage = () => {
                 <p className="text-xs text-slate-200 mt-2 font-sans font-medium leading-relaxed">
                   {trendSummary.congestion_summary || 'Evaluating severity shifts...'}
                 </p>
-                <span className="text-[10px] text-amber-400 font-mono mt-2 block">
-                  Sample Count: {trendData?.sample_count || 0} Telemetry Snapshots
-                </span>
               </Card>
-
             </div>
 
             {/* Time-Series Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Vehicle Volume Trend Line Chart */}
               <Card title="Vehicle Volume Trend Over Time" subtitle="Chronological vehicle volume progression from database telemetry">
                 <div className="h-72 w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -605,7 +492,6 @@ export const ReportsPage = () => {
                       <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-                        formatter={(val) => [`${val} vehicles`, 'Volume']}
                       />
                       <Area type="monotone" dataKey="vehicle_count" name="Vehicle Volume" stroke="#14b8a6" fillOpacity={1} fill="url(#colorVol)" strokeWidth={2} />
                     </AreaChart>
@@ -613,7 +499,6 @@ export const ReportsPage = () => {
                 </div>
               </Card>
 
-              {/* Average Speed Trend Line Chart */}
               <Card title="Average Speed Velocity Trend" subtitle="Network speed progression over time">
                 <div className="h-72 w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -623,33 +508,125 @@ export const ReportsPage = () => {
                       <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-                        formatter={(val) => [`${val} km/h`, 'Avg Speed']}
                       />
                       <Line type="monotone" dataKey="average_speed" name="Average Speed" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3, fill: '#38bdf8' }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
+            </div>
+          </div>
+        )}
 
+        {/* TAB 3: AI TRAFFIC RECOMMENDATIONS */}
+        {activeTab === 'recommendations' && (
+          <div className="space-y-6 animate-fade-in">
+            
+            {/* Category Filter Bar */}
+            <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-2 text-xs font-mono text-slate-300">
+                <FaLightbulb className="text-amber-400 text-sm" />
+                <span>AI ADVISORY CATEGORY:</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                {[
+                  { label: 'All Advisories', value: 'ALL' },
+                  { label: 'Congestion Warnings', value: 'CONGESTION_WARNING' },
+                  { label: 'High-Risk Corridors', value: 'HIGH_RISK_CORRIDOR' },
+                  { label: 'Speed Reductions', value: 'SPEED_REDUCTION' },
+                  { label: 'Route Alternatives', value: 'ALTERNATIVE_ROUTE_SUGGESTION' },
+                  { label: 'Stable Traffic', value: 'STABLE_TRAFFIC' }
+                ].map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setRecCategoryFilter(cat.value)}
+                    className={`px-3 py-1.5 rounded-lg border transition-all ${
+                      recCategoryFilter === cat.value
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Congestion Progression Timeline Chart */}
-            <Card title="Congestion Level Progression Timeline" subtitle="Calculated congestion severity score over time (1=LOW, 2=MODERATE, 3=HIGH, 4=CRITICAL)">
-              <div className="h-64 w-full pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timeSeries}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="time_label" stroke="#64748b" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 4]} ticks={[1, 2, 3, 4]} tickFormatter={(s) => s === 1 ? 'LOW' : s === 2 ? 'MOD' : s === 3 ? 'HIGH' : 'CRIT'} stroke="#64748b" tick={{ fontSize: 11 }} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-                      formatter={(val, name, item) => [item.payload.congestion_level, 'Congestion Level']}
-                    />
-                    <Bar dataKey="congestion_score" name="Congestion Severity" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+            {/* Recommendations Grid */}
+            {isRecLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SkeletonMetric />
+                <SkeletonMetric />
               </div>
-            </Card>
+            ) : filteredRecommendations.length === 0 ? (
+              <div className="p-8 text-center glass-panel rounded-xl border border-slate-800 text-slate-400 text-xs font-mono">
+                No active traffic recommendations matching the selected advisory filter.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredRecommendations.map((rec) => (
+                  <div 
+                    key={rec.id} 
+                    className={`glass-panel p-5 rounded-2xl border transition-all ${
+                      rec.severity === 'CRITICAL' ? 'border-rose-500/50 bg-rose-950/10' :
+                      rec.severity === 'HIGH' ? 'border-orange-500/50 bg-orange-950/10' :
+                      rec.severity === 'MODERATE' ? 'border-amber-500/40 bg-amber-950/10' :
+                      'border-emerald-500/30 bg-slate-900/80'
+                    }`}
+                  >
+                    {/* Header Badge */}
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-800/80 pb-2.5">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
+                          {rec.road_code}
+                        </span>
+                        <span className="text-xs font-bold text-slate-100">{rec.road_name}</span>
+                      </div>
+
+                      <StatusBadge status={rec.severity} type={rec.severity === 'CRITICAL' || rec.severity === 'HIGH' ? 'red' : rec.severity === 'MODERATE' ? 'amber' : 'green'} />
+                    </div>
+
+                    {/* Recommendation Message */}
+                    <p className="text-xs font-semibold text-slate-100 leading-snug mb-2 flex items-start gap-2">
+                      <FaLightbulb className="text-amber-400 shrink-0 mt-0.5" />
+                      <span>{rec.message}</span>
+                    </p>
+
+                    {/* Explainable Rationale */}
+                    <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800/80 text-[11px] text-slate-300 font-sans mb-3">
+                      <strong className="text-amber-400 font-mono block text-[10px] uppercase mb-1">EXPLAINABLE DATABASE RATIONALE</strong>
+                      {rec.explainable_rationale}
+                    </div>
+
+                    {/* Supporting Metrics Grid */}
+                    <div className="grid grid-cols-3 gap-2 text-[10px] font-mono bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 mb-4">
+                      <div>
+                        <span className="text-slate-500 block">Volume</span>
+                        <span className="text-teal-400 font-bold">{rec.supporting_metrics?.vehicle_count} veh</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Avg Speed</span>
+                        <span className="text-sky-400 font-bold">{rec.supporting_metrics?.average_speed} km/h</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Congestion</span>
+                        <span className="text-amber-400 font-bold">{rec.supporting_metrics?.congestion_level}</span>
+                      </div>
+                    </div>
+
+                    {/* GIS Map Direct Action Button */}
+                    <Link
+                      to={`/public/map?road_id=${rec.road_id}`}
+                      className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center space-x-2 transition-colors"
+                    >
+                      <span>Inspect Corridor on GIS Map</span>
+                      <FaExternalLinkAlt className="text-[10px]" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
 
           </div>
         )}

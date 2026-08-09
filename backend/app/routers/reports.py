@@ -327,3 +327,23 @@ def get_traffic_trends(
         "time_series": time_series,
         "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
     }
+
+from app.services.recommendation_engine import generate_traffic_recommendations
+
+@router.get("/traffic/recommendations")
+def get_traffic_recommendations_in_reports(
+    road_id: Optional[int] = Query(None),
+    zone: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Admin", "Operator"]))
+):
+    """
+    Retrieve real-data AI traffic recommendations for Control Center Administrators and Operators.
+    Evaluates current telemetry, short-term trends, speed reductions, and same-zone corridor comparisons.
+    """
+    recs = generate_traffic_recommendations(db, road_id=road_id, zone=zone, is_public_safe=False)
+    return {
+        "count": len(recs),
+        "recommendations": recs,
+        "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
+    }

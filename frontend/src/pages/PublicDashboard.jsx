@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   FaRoad, FaExclamationTriangle, FaCheckCircle, FaClock, 
   FaSync, FaArrowRight, FaShieldAlt, FaTachometerAlt, FaCar, FaMapMarkerAlt,
-  FaStar, FaRegStar, FaUserCheck, FaRoute, FaLocationArrow, FaCarSide 
+  FaStar, FaRegStar, FaUserCheck, FaRoute, FaLocationArrow, FaCarSide, FaLightbulb, FaExternalLinkAlt
 } from 'react-icons/fa';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { Card } from '../components/ui/Card';
@@ -16,6 +16,7 @@ export const PublicDashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const [stats, setStats] = useState(null);
   const [roads, setRoads] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,13 +41,15 @@ export const PublicDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const [statsRes, roadsRes] = await Promise.all([
+      const [statsRes, roadsRes, recsRes] = await Promise.all([
         apiClient.get('/public/dashboard-stats'),
-        apiClient.get('/public/roads')
+        apiClient.get('/public/roads'),
+        apiClient.get('/public/recommendations')
       ]);
       setStats(statsRes || {});
       const list = Array.isArray(roadsRes) ? roadsRes : [];
       setRoads(list);
+      setRecommendations(recsRes?.recommendations || []);
     } catch (err) {
       console.error("Public dashboard telemetry fetch error:", err);
       setError('Failed to fetch real-time public traffic telemetry.');
@@ -286,6 +289,63 @@ export const PublicDashboard = () => {
                         <FaTachometerAlt className="text-emerald-500/70 text-[10px]" /> {r.average_speed || 0} km/h
                       </span>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI Traffic Advisories & Same-Zone Corridor Recommendations */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <FaLightbulb className="text-amber-400 text-sm" />
+              <span>AI Traffic Advisories & Corridor Recommendations</span>
+              <span className="text-xs font-mono text-slate-400 font-normal">({recommendations.length} Active)</span>
+            </h2>
+            <span className="text-[11px] text-slate-400">100% Data-Driven Telemetry Insights</span>
+          </div>
+
+          {recommendations.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 glass-panel rounded-xl border border-slate-800 text-xs">
+              No active traffic advisories or congestion warnings. All monitored corridors are operating under normal conditions.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {recommendations.slice(0, 3).map((rec) => (
+                <div 
+                  key={rec.id} 
+                  className={`glass-panel p-4 rounded-xl border transition-all ${
+                    rec.severity === 'CRITICAL' ? 'border-rose-500/50 bg-rose-950/20' :
+                    rec.severity === 'HIGH' ? 'border-orange-500/50 bg-orange-950/20' :
+                    rec.severity === 'MODERATE' ? 'border-amber-500/40 bg-amber-950/20' :
+                    'border-teal-500/30 bg-slate-900/90'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-mono font-bold text-amber-400">{rec.road_code}</span>
+                    <StatusBadge status={rec.severity} type={rec.severity === 'CRITICAL' || rec.severity === 'HIGH' ? 'red' : rec.severity === 'MODERATE' ? 'amber' : 'green'} />
+                  </div>
+
+                  <h3 className="text-sm font-bold text-slate-100 mb-1 leading-snug">{rec.message}</h3>
+                  <p className="text-[11px] text-slate-300 mb-3 font-sans bg-slate-950/60 p-2 rounded border border-slate-800">
+                    <strong className="text-teal-400 block text-[10px] uppercase font-mono">REASON</strong>
+                    {rec.explainable_rationale}
+                  </p>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Speed: <strong className="text-emerald-400">{rec.supporting_metrics?.average_speed} km/h</strong>
+                    </span>
+
+                    <Link
+                      to={`/public/map?road_id=${rec.road_id}`}
+                      className="text-xs text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1"
+                    >
+                      <span>Inspect Map</span>
+                      <FaExternalLinkAlt className="text-[9px]" />
+                    </Link>
                   </div>
                 </div>
               ))}

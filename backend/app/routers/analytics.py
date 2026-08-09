@@ -166,3 +166,23 @@ def get_analytics_details(db: Session = Depends(get_db)) -> Dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate traffic analytics: {str(e)}"
         )
+
+from app.services.recommendation_engine import generate_traffic_recommendations
+from typing import Optional
+
+@router.get("/recommendations/traffic")
+def get_admin_traffic_recommendations(
+    road_id: Optional[int] = None,
+    zone: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve real-data AI traffic recommendations for Control Center Administrators and Operators.
+    Evaluates current telemetry, short-term trends, speed reductions, and same-zone corridor comparisons.
+    """
+    recs = generate_traffic_recommendations(db, road_id=road_id, zone=zone, is_public_safe=False)
+    return {
+        "count": len(recs),
+        "recommendations": recs,
+        "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
+    }

@@ -394,3 +394,22 @@ def remove_user_favorite_road(
         db.commit()
 
     return {"message": "Corridor removed from favorites successfully.", "road_id": road_id, "is_favorite": False}
+
+from app.services.recommendation_engine import generate_traffic_recommendations
+
+@router.get("/recommendations")
+def get_public_traffic_recommendations(
+    road_id: int = None,
+    zone: str = None,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Public Read-Only Endpoint: Returns public-safe AI traffic advisories and recommendations.
+    Uses 100% real database telemetry to recommend lower-congestion corridors and explainable speed alerts.
+    """
+    recs = generate_traffic_recommendations(db, road_id=road_id, zone=zone, is_public_safe=True)
+    return {
+        "count": len(recs),
+        "recommendations": recs,
+        "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
+    }
