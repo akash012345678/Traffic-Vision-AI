@@ -4,6 +4,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { RoadDetailsSidePanel } from '../components/common/RoadDetailsSidePanel';
+import { AIVideoModal } from '../components/traffic/AIVideoModal';
 import { SkeletonTable } from '../components/ui/Skeleton';
 
 import { useToast } from '../contexts/ToastContext';
@@ -12,11 +13,15 @@ import {
   FaVideo, FaSync, FaSearch, FaFilter, FaSort, FaSortUp, FaSortDown, 
   FaChevronLeft, FaChevronRight, FaRoad, FaEye, FaTimes, FaMapMarkerAlt,
   FaUserTie, FaTachometerAlt, FaCar, FaClock, FaFileDownload, FaChartLine,
-  FaExclamationTriangle, FaCheckCircle, FaSlidersH, FaExclamationCircle
+  FaExclamationTriangle, FaCheckCircle, FaSlidersH, FaExclamationCircle, FaPlay
 } from 'react-icons/fa';
 
 export const AdminMonitoringPage = () => {
   const { showError, showSuccess } = useToast();
+  
+  // Video viewer modal state
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [selectedVideoRoadId, setSelectedVideoRoadId] = useState(null);
   
   // Render count tracking for performance auditing
   const renderCountRef = useRef(0);
@@ -548,14 +553,25 @@ export const AdminMonitoringPage = () => {
               </div>
 
               {inspectorRoad && (
-                <Button 
-                  size="sm" 
-                  onClick={() => handleOpenSidePanel(inspectorRoad.id)} 
-                  className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold space-x-1.5"
-                >
-                  <FaEye />
-                  <span>Inspect Full Telemetry Side Panel</span>
-                </Button>
+                <div className="space-y-2">
+                  <Button 
+                    size="sm" 
+                    onClick={() => { setSelectedVideoRoadId(inspectorRoad.id); setIsVideoModalOpen(true); }} 
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold space-x-1.5 shadow-md"
+                  >
+                    <FaPlay className="text-[10px]" />
+                    <span>▶ View AI Video Telemetry</span>
+                  </Button>
+
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleOpenSidePanel(inspectorRoad.id)} 
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold space-x-1.5"
+                  >
+                    <FaEye />
+                    <span>Inspect Telemetry Side Panel</span>
+                  </Button>
+                </div>
               )}
             </Card>
           </div>
@@ -570,6 +586,13 @@ export const AdminMonitoringPage = () => {
           isLoading={isLoadingDetails}
           error={panelError}
           onRetry={() => selectedRoadId && handleOpenSidePanel(selectedRoadId)}
+        />
+
+        {/* AI Video Viewer Modal */}
+        <AIVideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          roadId={selectedVideoRoadId}
         />
 
       </div>

@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { StatusBadge } from './StatusBadge';
 import { Button } from '../ui/Button';
 import { useLiveTelemetry } from '../../hooks/useLiveTelemetry';
+import { AIVideoModal } from '../traffic/AIVideoModal';
 import { 
   FaRoad, 
   FaTimes, 
@@ -22,10 +23,12 @@ import {
   FaVideo,
   FaBus,
   FaTruck,
-  FaMotorcycle
+  FaMotorcycle,
+  FaPlay
 } from 'react-icons/fa';
 
 export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, error, onRetry }) => {
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const targetRoadId = roadData?.id || roadData?.road_id;
   const { data: liveStreamData } = useLiveTelemetry(targetRoadId, isOpen, 1200);
 
@@ -214,6 +217,26 @@ export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, err
                       No operator currently assigned to this road corridor.
                     </div>
                   )}
+                </div>
+
+                {/* VIEW AI VIDEO ACTION BUTTON */}
+                <div className="p-3.5 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 rounded-xl border border-blue-500/30 flex items-center justify-between shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/40">
+                      <FaVideo className="text-base" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100">Live AI Video Telemetry</h4>
+                      <p className="text-[10px] text-slate-400">YOLOv8 frame-accurate synchronized analysis</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsVideoModalOpen(true)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105"
+                  >
+                    <FaPlay className="text-[10px]" />
+                    <span>View AI Video</span>
+                  </button>
                 </div>
 
                 {/* SECTIONS 3, 4, 5: VEHICLE COUNT, AVERAGE SPEED, CONGESTION */}
@@ -458,6 +481,13 @@ export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, err
 
         </div>
       </div>
+
+      <AIVideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        roadId={targetRoadId}
+        roadName={roadData?.road_name}
+      />
     </div>,
     document.body
   );

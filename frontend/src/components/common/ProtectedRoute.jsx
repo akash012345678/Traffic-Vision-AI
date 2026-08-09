@@ -26,7 +26,10 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
       (r) => r.toUpperCase() === user.role.toUpperCase()
     );
     if (!isAuthorized) {
-      const redirectPath = user.role.toUpperCase() === 'ADMIN' ? '/admin/dashboard' : '/operator/dashboard';
+      const roleUpper = (user.role || '').toUpperCase();
+      const redirectPath = roleUpper === 'ADMIN' 
+        ? '/admin/dashboard' 
+        : (roleUpper === 'PUBLIC' ? '/public/dashboard' : '/operator/dashboard');
       return <Navigate to={redirectPath} replace />;
     }
   }

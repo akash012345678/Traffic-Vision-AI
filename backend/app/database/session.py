@@ -107,6 +107,7 @@ def init_db():
         # Traffic telemetry table columns
         add_column_if_missing("traffic_data", "confidence", "FLOAT")
         add_column_if_missing("traffic_data", "processed_at", "TIMESTAMP")
+        add_column_if_missing("traffic_data", "video_timestamp", "FLOAT DEFAULT 0.0")
         add_column_if_missing("traffic_data", "video_id", "INTEGER REFERENCES uploaded_videos(id) ON DELETE SET NULL")
         add_column_if_missing("traffic_data", "car_count", "INTEGER DEFAULT 0")
         add_column_if_missing("traffic_data", "bus_count", "INTEGER DEFAULT 0")
@@ -116,10 +117,19 @@ def init_db():
 
         # Uploaded videos table columns
         add_column_if_missing("uploaded_videos", "road_name", "VARCHAR(150)")
+        add_column_if_missing("uploaded_videos", "video_url", "VARCHAR(255)")
+        add_column_if_missing("uploaded_videos", "processed_video_url", "VARCHAR(255)")
+        add_column_if_missing("uploaded_videos", "total_vehicles", "INTEGER DEFAULT 0")
         add_column_if_missing("uploaded_videos", "car_count", "INTEGER DEFAULT 0")
         add_column_if_missing("uploaded_videos", "bus_count", "INTEGER DEFAULT 0")
         add_column_if_missing("uploaded_videos", "truck_count", "INTEGER DEFAULT 0")
         add_column_if_missing("uploaded_videos", "motorcycle_count", "INTEGER DEFAULT 0")
+        add_column_if_missing("uploaded_videos", "average_speed", "FLOAT DEFAULT 30.0")
+        add_column_if_missing("uploaded_videos", "congestion_level", "VARCHAR(50) DEFAULT 'MODERATE'")
+        add_column_if_missing("uploaded_videos", "confidence", "FLOAT DEFAULT 0.60")
+        add_column_if_missing("uploaded_videos", "resolution", "VARCHAR(50)")
+        add_column_if_missing("uploaded_videos", "fps", "FLOAT")
+        add_column_if_missing("uploaded_videos", "duration_seconds", "FLOAT")
 
         # Create High-Performance SQL Indexes
         indexes = [

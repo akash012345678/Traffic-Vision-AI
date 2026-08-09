@@ -19,7 +19,7 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify plain password against bcrypt hashed password with legacy fallback."""
-    if not hashed_password:
+    if not hashed_password or not plain_password:
         return False
     try:
         if bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8')):
@@ -27,9 +27,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception:
         pass
 
+    # Fallback for copy-pasted password with surrounding whitespace
+    stripped_pwd = plain_password.strip()
+    if stripped_pwd != plain_password:
+        try:
+            if bcrypt.checkpw(stripped_pwd.encode('utf-8'), hashed_password.encode('utf-8')):
+                return True
+        except Exception:
+            pass
+
     # Legacy sha256 or plaintext fallback
     sha256_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
-    if sha256_hash == hashed_password or plain_password == hashed_password:
+    if sha256_hash == hashed_password or plain_password == hashed_password or stripped_pwd == hashed_password:
         return True
 
     return False

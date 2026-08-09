@@ -7,18 +7,9 @@ import { Button } from '../components/ui/Button';
 import { CongestionBadge } from '../components/common/CongestionBadge';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
-import { 
-  FaRoad, 
-  FaMapMarkerAlt, 
-  FaUserTie, 
-  FaCar, 
-  FaTachometerAlt, 
-  FaClock, 
-  FaArrowLeft, 
-  FaSync 
-} from 'react-icons/fa';
-
+import { FaRoad, FaMapMarkerAlt, FaUserTie, FaCar, FaTachometerAlt, FaClock, FaArrowLeft, FaSync, FaPlay, FaVideo } from 'react-icons/fa';
 import { useLiveTelemetry } from '../hooks/useLiveTelemetry';
+import { AIVideoModal } from '../components/traffic/AIVideoModal';
 
 export const RoadDetailsPage = () => {
   const { id } = useParams();
@@ -26,6 +17,7 @@ export const RoadDetailsPage = () => {
   const [roadData, setRoadData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   const { data: liveStreamData } = useLiveTelemetry(id, !!id, 1200);
 
@@ -102,6 +94,13 @@ export const RoadDetailsPage = () => {
                 </div>
 
                 <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setIsVideoModalOpen(true)}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all transform hover:scale-105"
+                  >
+                    <FaPlay className="text-[10px]" />
+                    <span>▶ View AI Video</span>
+                  </button>
                   <CongestionBadge level={activeRoadData.current_telemetry?.congestion_level} />
                 </div>
               </div>
@@ -266,6 +265,14 @@ export const RoadDetailsPage = () => {
             </Card>
           </>
         ) : null}
+
+        {/* AI Video Viewer Modal */}
+        <AIVideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          roadId={id}
+          roadName={activeRoadData?.road_name}
+        />
 
       </div>
     </LayoutWrapper>

@@ -104,9 +104,10 @@ class TrafficData(Base):
     congestion_level = Column(String(50), default="Low", nullable=False) # Low, Moderate, High, Critical/Severe
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
-    # New columns for Phase 4 / AI
+    # New columns for Phase 4 / AI & Video Synchronization
     confidence = Column(Float, nullable=True)
     processed_at = Column(DateTime(timezone=True), nullable=True)
+    video_timestamp = Column(Float, default=0.0, nullable=True, index=True)
     
     # ForeignKey to trace originating uploaded video (Phase 6)
     video_id = Column(Integer, ForeignKey("uploaded_videos.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -30,7 +30,7 @@ def get_live_traffic_monitoring(
     - Operator: queries ONLY roads assigned to current_user.id.
     """
     effective_op_id = operator_id
-    if current_user and current_user.role == "Operator":
+    if current_user and (current_user.role or "").upper() == "OPERATOR":
         effective_op_id = current_user.id
 
     return TrafficRepository.get_live_monitoring(

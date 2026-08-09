@@ -490,18 +490,18 @@ export const AdminAlertsPage = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
-                <thead className="text-[11px] uppercase bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                <thead className="text-[11px] uppercase bg-slate-900/90 text-slate-400 border-b border-slate-800 tracking-wider">
                   <tr>
-                    <th className="py-3.5 px-3">Alert ID</th>
-                    <th className="py-3.5 px-3">Alert Type</th>
-                    <th className="py-3.5 px-3">Road</th>
-                    <th className="py-3.5 px-3">Zone</th>
-                    <th className="py-3.5 px-3">Severity</th>
-                    <th className="py-3.5 px-3">Status</th>
-                    <th className="py-3.5 px-3">Assigned Operator</th>
-                    <th className="py-3.5 px-3">Created Time</th>
-                    <th className="py-3.5 px-3">Updated Time</th>
-                    <th className="py-3.5 px-3 text-right">Actions</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Alert ID</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Alert Type</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Road</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Zone</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Severity</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Assigned Operator</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Created Time</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Updated Time</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -512,45 +512,45 @@ export const AdminAlertsPage = () => {
                       <tr key={a.id} className="hover:bg-slate-900/50 transition-colors">
                         
                         {/* 1. Alert ID */}
-                        <td className="py-3.5 px-3 font-mono font-bold text-amber-400">
+                        <td className="py-3.5 px-4 font-mono font-bold text-amber-400 whitespace-nowrap text-xs">
                           #ALT-{a.id.toString().padStart(3, '0')}
                         </td>
 
                         {/* 2. Alert Type */}
-                        <td className="py-3.5 px-3">
-                          <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded text-[11px] font-semibold">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-md text-xs font-semibold inline-block">
                             {a.alert_type}
                           </span>
                         </td>
 
                         {/* 3. Road */}
-                        <td className="py-3.5 px-3 font-bold text-slate-100">
-                          <span>{a.road?.road_name || 'City Corridor'}</span>
-                          <span className="text-[10px] text-teal-400 font-mono block">{a.road?.road_code || `RD-${a.road_id}`}</span>
+                        <td className="py-3.5 px-4 font-bold text-slate-100 whitespace-nowrap">
+                          <span className="block">{a.road?.road_name || 'City Corridor'}</span>
+                          <span className="text-[10px] text-teal-400 font-mono block font-normal">{a.road?.road_code || `RD-${a.road_id}`}</span>
                         </td>
 
                         {/* 4. Zone */}
-                        <td className="py-3.5 px-3 text-slate-300">
-                          <span className="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-300 whitespace-nowrap">
+                          <span className="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-md text-xs">
                             {a.road?.zone || 'Zone Alpha'}
                           </span>
                         </td>
 
                         {/* 5. Severity */}
-                        <td className="py-3.5 px-3">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
                           <StatusBadge status={a.severity || 'Medium'} type={getSeverityBadgeType(a.severity)} />
                         </td>
 
                         {/* 6. Status */}
-                        <td className="py-3.5 px-3">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
                           <StatusBadge status={a.status || 'ACTIVE'} type={getStatusBadgeType(a.status)} />
                         </td>
 
                         {/* 7. Assigned Operator */}
-                        <td className="py-3.5 px-3 text-slate-300 font-mono text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-300 font-sans text-xs whitespace-nowrap">
                           {a.assigned_operator ? (
-                            <span className="text-teal-400 flex items-center gap-1">
-                              <FaUserTie className="text-[10px]" /> {a.assigned_operator.name}
+                            <span className="text-teal-400 flex items-center gap-1.5 font-medium">
+                              <FaUserTie className="text-slate-400 text-xs" /> {a.assigned_operator.name}
                             </span>
                           ) : (
                             <span className="text-slate-500 italic">Unassigned</span>
@@ -558,17 +558,17 @@ export const AdminAlertsPage = () => {
                         </td>
 
                         {/* 8. Created Time */}
-                        <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-400 font-mono text-xs whitespace-nowrap">
                           {a.created_at ? new Date(a.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Recent'}
                         </td>
 
                         {/* 9. Updated Time */}
-                        <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-400 font-mono text-xs whitespace-nowrap">
                           {a.updated_at ? new Date(a.updated_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : (a.created_at ? new Date(a.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Recent')}
                         </td>
 
                         {/* 10. Actions Column */}
-                        <td className="py-3.5 px-3 text-right space-x-1.5">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
                           {/* View Side Panel Specs */}
                           <button
                             onClick={() => { setActiveAlert(a); setIsSidePanelOpen(true); }}

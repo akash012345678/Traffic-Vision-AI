@@ -26,6 +26,12 @@ import { OperatorAlertsPage } from './pages/OperatorAlertsPage';
 import { OperatorProfilePage } from './pages/OperatorProfilePage';
 import { RoadDetailsPage } from './pages/RoadDetailsPage';
 
+import { PublicDashboard } from './pages/PublicDashboard';
+import { PublicRoadsPage } from './pages/PublicRoadsPage';
+import { PublicAlertsPage } from './pages/PublicAlertsPage';
+import { PublicMapPage } from './pages/PublicMapPage';
+import { SignupPage } from './pages/SignupPage';
+
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function App() {
@@ -35,10 +41,16 @@ function App() {
         <ToastProvider>
           <Router>
             <Routes>
-              {/* Public Routes */}
+              {/* Public Portal Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/public/dashboard" element={<PublicDashboard />} />
+              <Route path="/public/roads" element={<PublicRoadsPage />} />
+              <Route path="/public/alerts" element={<PublicAlertsPage />} />
+              <Route path="/public/map" element={<PublicMapPage />} />
+              <Route path="/public" element={<Navigate to="/public/dashboard" replace />} />
 
               {/* Road Details Route */}
               <Route

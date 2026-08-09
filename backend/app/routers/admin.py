@@ -82,10 +82,10 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     operators = OperatorRepository.get_all_operators(db)[:6]
 
     recent_activity = [
-        {"id": 1, "text": "Corridor 'North Expressway' assigned to Sarah Jenkins", "timestamp": "2 mins ago", "type": "assignment"},
+        {"id": 1, "text": "Corridor duty scoping updated across active zones", "timestamp": "2 mins ago", "type": "assignment"},
         {"id": 2, "text": "High congestion alert cleared on West Arterial", "timestamp": "14 mins ago", "type": "alert"},
-        {"id": 3, "text": "Operator 'David Miller' signed into Control Center", "timestamp": "28 mins ago", "type": "auth"},
-        {"id": 4, "text": "Telemetry sync complete across 128 edge cameras", "timestamp": "45 mins ago", "type": "system"},
+        {"id": 3, "text": "Control Center telemetry session active", "timestamp": "28 mins ago", "type": "auth"},
+        {"id": 4, "text": "Telemetry sync complete across edge cameras", "timestamp": "45 mins ago", "type": "system"},
     ]
 
     return {

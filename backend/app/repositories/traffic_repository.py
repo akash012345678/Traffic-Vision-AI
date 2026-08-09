@@ -294,6 +294,7 @@ class TrafficRepository:
             truck_count=traffic_data.get("truck_count", 0),
             motorcycle_count=traffic_data.get("motorcycle_count", 0),
             video_name=traffic_data.get("video_name"),
+            video_timestamp=traffic_data.get("video_timestamp"),
             average_speed=traffic_data.get("average_speed", 0.0),
             congestion_level=traffic_data.get("congestion_level", "Low"),
             confidence=traffic_data.get("confidence", 0.0),

@@ -5,15 +5,16 @@ import { useToast } from '../contexts/ToastContext';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FaTrafficLight, FaUser, FaShieldAlt, FaQuestionCircle } from 'react-icons/fa';
+import { FaTrafficLight, FaUser, FaShieldAlt, FaGlobe, FaQuestionCircle, FaEye, FaEyeSlash, FaUserPlus, FaArrowRight } from 'react-icons/fa';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [email, setEmail] = useState('operator1@trafficvision.ai');
-  const [password, setPassword] = useState('opPass2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState('Operator');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,9 +23,12 @@ export const LoginPage = () => {
     if (role === 'Admin') {
       setEmail('admin.chief@trafficvision.ai');
       setPassword('adminpass123');
+    } else if (role === 'Public') {
+      setEmail('akash.public@trafficvision.ai');
+      setPassword('publicpass123');
     } else {
-      setEmail('operator1@trafficvision.ai');
-      setPassword('opPass2026!');
+      setEmail('mahamanisha2005@gmail.com');
+      setPassword('Traf@2026#MQPF');
     }
   };
 
@@ -33,12 +37,16 @@ export const LoginPage = () => {
     setIsSubmitting(true);
 
     try {
-      const userProfile = await login(email, password);
+      const cleanEmail = email.trim();
+      const cleanPassword = password.trim();
+      const userProfile = await login(cleanEmail, cleanPassword);
       showSuccess(`Welcome back, ${userProfile.name}!`, 'Authenticated');
       
       const roleUpper = (userProfile.role || '').toUpperCase();
       if (roleUpper === 'ADMIN') {
         navigate('/admin/dashboard', { replace: true });
+      } else if (roleUpper === 'PUBLIC') {
+        navigate('/public/dashboard', { replace: true });
       } else {
         navigate('/operator/dashboard', { replace: true });
       }
@@ -68,34 +76,49 @@ export const LoginPage = () => {
               {/* Role Presets */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Role Preset Quick Select
+                  Role Preset Quick Select (Demo)
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
+                  
                   <button
                     type="button"
                     onClick={() => handleRoleSelect('Operator')}
-                    className={`py-2 px-3 rounded-lg text-xs font-medium border flex items-center justify-center space-x-2 transition-all ${
+                    className={`py-2 px-2 rounded-lg text-xs font-medium border flex items-center justify-center space-x-1 transition-all ${
                       selectedRole === 'Operator'
                         ? 'bg-teal-500/20 border-teal-500 text-teal-300'
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
                     <FaUser />
-                    <span>Operator Login</span>
+                    <span>Operator</span>
                   </button>
                   
                   <button
                     type="button"
                     onClick={() => handleRoleSelect('Admin')}
-                    className={`py-2 px-3 rounded-lg text-xs font-medium border flex items-center justify-center space-x-2 transition-all ${
+                    className={`py-2 px-2 rounded-lg text-xs font-medium border flex items-center justify-center space-x-1 transition-all ${
                       selectedRole === 'Admin'
                         ? 'bg-teal-500/20 border-teal-500 text-teal-300'
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
                     <FaShieldAlt />
-                    <span>Admin Login</span>
+                    <span>Admin</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRoleSelect('Public')}
+                    className={`py-2 px-2 rounded-lg text-xs font-medium border flex items-center justify-center space-x-1 transition-all ${
+                      selectedRole === 'Public'
+                        ? 'bg-teal-500/20 border-teal-500 text-teal-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <FaGlobe />
+                    <span>Public</span>
+                  </button>
+
                 </div>
               </div>
 
@@ -106,9 +129,11 @@ export const LoginPage = () => {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-                  placeholder="name@trafficvision.ai"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                  }}
+                  className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors font-mono"
+                  placeholder="name@gmail.com or name@trafficvision.ai"
                 />
               </div>
 
@@ -121,21 +146,48 @@ export const LoginPage = () => {
                     <span>Forgot Password?</span>
                   </Link>
                 </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-                  placeholder="••••••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3.5 py-2 pr-10 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors font-mono"
+                    placeholder="Enter password or temporary password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-400 transition-colors text-sm"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-2">
+              <div className="pt-2 space-y-3">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Authenticating...' : 'Sign In & Access Console'}
                 </Button>
+
+                <Link
+                  to="/public/dashboard"
+                  className="w-full py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-teal-400 text-xs font-semibold flex items-center justify-center space-x-2 transition-colors"
+                >
+                  <FaGlobe />
+                  <span>Browse Public Dashboard as Guest</span>
+                  <FaArrowRight className="text-[10px]" />
+                </Link>
+              </div>
+
+              {/* Public Sign Up Link */}
+              <div className="text-center pt-4 border-t border-slate-800 text-xs text-slate-400">
+                <span>Don't have a public account? </span>
+                <Link to="/signup" className="text-teal-400 font-bold hover:underline inline-flex items-center gap-1">
+                  <FaUserPlus className="text-xs" /> Register / Sign Up
+                </Link>
               </div>
 
             </form>

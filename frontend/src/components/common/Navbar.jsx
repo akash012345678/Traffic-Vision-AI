@@ -12,7 +12,9 @@ import {
   FaBars, 
   FaTimes, 
   FaCheckCircle, 
-  FaExclamationTriangle 
+  FaExclamationTriangle,
+  FaGlobe,
+  FaUserPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBadge } from './StatusBadge';
@@ -67,7 +69,7 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 glass-panel border-b border-slate-800 bg-slate-950/85 backdrop-blur-md w-full">
+    <nav className="sticky top-0 z-50 glass-panel border-b border-slate-800 bg-slate-950/95 backdrop-blur-md w-full shadow-xl">
       <div className="w-full px-6">
         <div className="flex items-center justify-between h-16 gap-4">
           
@@ -204,13 +206,31 @@ export const Navbar = () => {
 
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="inline-flex items-center space-x-2 bg-teal-500 hover:bg-teal-400 text-slate-950 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-md shadow-teal-500/20"
-              >
-                <FaSignInAlt />
-                <span>Portal Login</span>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/public/dashboard"
+                  className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-teal-500/40 text-teal-400 text-xs font-semibold transition-colors"
+                >
+                  <FaGlobe className="text-xs" />
+                  <span>Public Portal</span>
+                </Link>
+
+                <Link
+                  to="/signup"
+                  className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-slate-600 text-slate-200 text-xs font-semibold transition-colors"
+                >
+                  <FaUserPlus className="text-xs" />
+                  <span>Sign Up</span>
+                </Link>
+
+                <Link
+                  to="/login"
+                  className="inline-flex items-center space-x-2 bg-teal-500 hover:bg-teal-400 text-slate-950 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all shadow-md shadow-teal-500/20"
+                >
+                  <FaSignInAlt />
+                  <span>Portal Login</span>
+                </Link>
+              </div>
             )}
 
             {/* Mobile Menu Button */}

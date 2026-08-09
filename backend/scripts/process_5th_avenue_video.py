@@ -48,7 +48,7 @@ def main():
 
         # 2. Check for uploaded video
         video_dir = os.path.join(backend_dir, "uploads", "videos")
-        video_filename = "Traffic Video 1.mp4"
+        video_filename = "5th Avenue Corridor.mp4"
         video_filepath = os.path.join(video_dir, video_filename)
 
         if not os.path.exists(video_filepath):
@@ -85,7 +85,7 @@ def main():
         print(f"\n[STEP 3 & 4 & 5 & 6] Reading video with OpenCV, processing frames, running YOLOv8 detection & congestion analysis...")
         t_start = time.time()
         
-        stats = VideoProcessor.process_video(video_filepath, road_id=road.id, db=db)
+        stats = VideoProcessor.process_video(video_filepath, road_id=road.id, video_id=video_db.id, db=db)
         proc_time = time.time() - t_start
 
         print(f"\n" + "-" * 50)

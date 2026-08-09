@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "trafficvision_logs"
 
     # AI / Video Ingestion Settings
-    YOLO_MODEL_PATH: str = "models/yolov8n.pt"
+    YOLO_MODEL_PATH: str = "models/yolov8s.pt"
     UPLOAD_FOLDER: str = "uploads/videos"
     OUTPUT_FOLDER: str = "uploads/processed"
     MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50 MB

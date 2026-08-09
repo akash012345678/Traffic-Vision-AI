@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
@@ -16,11 +17,10 @@ logger = logging.getLogger("trafficvision.api")
 
 router = APIRouter(
     prefix="/videos",
-    tags=["Traffic Video Processing Pipeline"],
-    dependencies=[Depends(require_roles(["Admin", "Operator"]))]
+    tags=["Traffic Video Processing Pipeline"]
 )
 
-@router.post("/upload", response_model=VideoResponseSchema, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/upload", response_model=VideoResponseSchema, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(require_roles(["Admin", "Operator"]))])
 async def upload_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="The video file to upload (MP4, AVI, MOV)"),
@@ -130,12 +130,12 @@ async def upload_video(
 
     return db_video
 
-@router.get("", response_model=List[VideoResponseSchema])
+@router.get("", response_model=List[VideoResponseSchema], dependencies=[Depends(require_roles(["Admin", "Operator"]))])
 def get_videos(db: Session = Depends(get_db)):
     """Retrieve metadata of all uploaded videos."""
     return VideoRepository.get_all_videos(db)
 
-@router.delete("/{video_id}")
+@router.delete("/{video_id}", dependencies=[Depends(require_roles(["Admin", "Operator"]))])
 def delete_video(video_id: int, db: Session = Depends(get_db)):
     """Delete video metadata from database and delete local physical video file."""
     db_video = VideoRepository.get_video_by_id(db, video_id)
@@ -162,3 +162,208 @@ def delete_video(video_id: int, db: Session = Depends(get_db)):
         )
 
     return {"message": f"Video {video_id} deleted successfully."}
+
+@router.get("/{video_id}/stream")
+def stream_video(
+    video_id: int,
+    request: Request,
+    token: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    HTTP Range-compliant video streaming endpoint (206 Partial Content).
+    Supports scrubbing, seeking, and smooth HTML5 playback in Chrome/Edge.
+    Does not load full video into memory.
+    """
+    from app.models.models import UploadedVideo
+    video = db.query(UploadedVideo).filter(UploadedVideo.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail=f"Video metadata for ID {video_id} not found.")
+
+    # Locate physical video file (prefer processed annotated video, fall back to raw upload)
+    filepath = None
+    if video.filepath and os.path.exists(video.filepath):
+        filepath = video.filepath
+    else:
+        cand1 = os.path.join(settings.OUTPUT_FOLDER, f"processed_{video.filename}")
+        cand2 = os.path.join(settings.UPLOAD_FOLDER, video.filename)
+        if os.path.exists(cand1):
+            filepath = cand1
+        elif os.path.exists(cand2):
+            filepath = cand2
+
+    if not filepath or not os.path.exists(filepath):
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Physical video file for video ID {video_id} ({video.filename}) not found on server."
+        )
+
+    file_size = os.path.getsize(filepath)
+    range_header = request.headers.get("range") or request.headers.get("Range")
+    content_type = "video/mp4"
+
+    if range_header:
+        # Parse range header format "bytes=start-end"
+        try:
+            range_str = range_header.replace("bytes=", "").strip()
+            parts = range_str.split("-")
+            start = int(parts[0]) if parts[0] else 0
+            end = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
+        except Exception:
+            start = 0
+            end = file_size - 1
+
+        if start >= file_size:
+            raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable")
+
+        end = min(end, file_size - 1)
+        content_length = end - start + 1
+
+        def range_stream():
+            chunk_size = 1024 * 1024  # 1MB chunk size
+            bytes_left = content_length
+            with open(filepath, "rb") as video_file:
+                video_file.seek(start)
+                while bytes_left > 0:
+                    read_bytes = min(chunk_size, bytes_left)
+                    data = video_file.read(read_bytes)
+                    if not data:
+                        break
+                    bytes_left -= len(data)
+                    yield data
+
+        headers = {
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(content_length),
+            "Content-Type": content_type,
+            "Access-Control-Allow-Origin": "*",
+        }
+        return StreamingResponse(
+            range_stream(),
+            status_code=206,
+            headers=headers,
+            media_type=content_type
+        )
+    else:
+        def full_stream():
+            chunk_size = 1024 * 1024
+            with open(filepath, "rb") as video_file:
+                while True:
+                    data = video_file.read(chunk_size)
+                    if not data:
+                        break
+                    yield data
+
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(file_size),
+            "Content-Type": content_type,
+            "Access-Control-Allow-Origin": "*",
+        }
+        return StreamingResponse(
+            full_stream(),
+            status_code=200,
+            headers=headers,
+            media_type=content_type
+        )
+
+@router.get("/{video_id}/telemetry")
+def get_video_telemetry(video_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve ordered time-series telemetry for a specific video,
+    sorted by video_timestamp ASC for frontend synchronization.
+    """
+    from app.models.models import TrafficData, UploadedVideo
+    video = db.query(UploadedVideo).filter(UploadedVideo.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail=f"Video ID {video_id} not found.")
+
+    # 1. First fetch interval telemetry specific to this video with timestamp > 0
+    records = db.query(TrafficData).filter(
+        (TrafficData.video_id == video_id) | (TrafficData.video_name == video.filename)
+    ).filter(TrafficData.video_timestamp > 0.0).order_by(TrafficData.video_timestamp.asc()).all()
+
+    # 2. If no interval telemetry exists yet, fall back to any road telemetry
+    if not records:
+        records = db.query(TrafficData).filter(
+            (TrafficData.video_id == video_id) | (TrafficData.road_id == video.road_id)
+        ).order_by(TrafficData.video_timestamp.asc(), TrafficData.timestamp.asc()).all()
+
+    items = []
+    for r in records:
+        items.append({
+            "id": r.id,
+            "road_id": r.road_id,
+            "video_id": r.video_id,
+            "video_name": r.video_name or video.filename,
+            "video_timestamp": r.video_timestamp or 0.0,
+            "vehicle_count": r.vehicle_count or 0,
+            "car_count": r.car_count or 0,
+            "motorcycle_count": r.motorcycle_count or 0,
+            "bus_count": r.bus_count or 0,
+            "truck_count": r.truck_count or 0,
+            "congestion_level": (r.congestion_level or "LOW").upper(),
+            "average_speed": r.average_speed or 0.0,
+            "confidence": r.confidence or 0.85,
+            "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+            "processed_at": r.processed_at.isoformat() if r.processed_at else None
+        })
+    return {
+        "video_id": video.id,
+        "filename": video.filename,
+        "road_id": video.road_id,
+        "total_records": len(items),
+        "telemetry": items
+    }
+
+@router.get("/road/{road_id}")
+def get_road_video_details(road_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve associated video info and AI processing status for a specified road.
+    """
+    from app.models.models import UploadedVideo, Road
+    road = db.query(Road).filter(Road.id == road_id).first()
+    if not road:
+        raise HTTPException(status_code=404, detail=f"Road ID {road_id} not found.")
+
+    video = db.query(UploadedVideo).filter(UploadedVideo.road_id == road_id).first()
+    if not video:
+        return {
+            "has_video": False,
+            "road_id": road_id,
+            "road_name": road.road_name,
+            "status": "NONE"
+        }
+
+    # Construct web accessible static and stream URLs
+    filename = video.filename
+    raw_url = f"/uploads/videos/{filename}"
+    proc_filename = f"processed_{filename}"
+    processed_url = f"/uploads/processed/{proc_filename}"
+    stream_url = f"/videos/{video.id}/stream"
+
+    return {
+        "has_video": True,
+        "video_id": video.id,
+        "road_id": road_id,
+        "road_name": road.road_name,
+        "road_code": road.road_code or f"RD-{road_id:03d}",
+        "filename": video.filename,
+        "filepath": video.filepath,
+        "video_url": raw_url,
+        "processed_video_url": processed_url,
+        "stream_url": stream_url,
+        "status": (video.status or "Uploaded").upper(),
+        "total_frames": video.total_frames or 0,
+        "fps": video.fps or 0.0,
+        "duration_seconds": video.duration_seconds or 0.0,
+        "resolution": video.resolution or "N/A",
+        "car_count": video.car_count or 0,
+        "bus_count": video.bus_count or 0,
+        "truck_count": video.truck_count or 0,
+        "motorcycle_count": video.motorcycle_count or 0,
+        "uploaded_at": video.uploaded_at.isoformat() if video.uploaded_at else None
+    }
+
+

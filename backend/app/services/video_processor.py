@@ -10,9 +10,69 @@ logger = logging.getLogger("trafficvision.ai")
 
 class VideoProcessor:
     @staticmethod
+    def reencode_to_h264(input_filepath: str) -> str:
+        """
+        Re-encodes the specified MP4 video file to H.264 (libx264, yuv420p)
+        to ensure HTML5 browser compatibility.
+        """
+        try:
+            import imageio_ffmpeg
+            import subprocess
+            import gc
+            import time
+
+            gc.collect()
+            time.sleep(0.3)
+
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            tmp_output = f"{input_filepath}.h264.mp4"
+            cmd = [
+                ffmpeg_exe, "-y", "-i", input_filepath,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-pix_fmt", "yuv420p", tmp_output
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0 and os.path.exists(tmp_output) and os.path.getsize(tmp_output) > 0:
+                gc.collect()
+                time.sleep(0.3)
+                replaced = False
+                for attempt in range(5):
+                    try:
+                        if os.path.exists(input_filepath):
+                            try:
+                                os.remove(input_filepath)
+                            except Exception:
+                                pass
+                        os.replace(tmp_output, input_filepath)
+                        replaced = True
+                        logger.info("Successfully re-encoded video to H.264: %s", input_filepath)
+                        break
+                    except Exception:
+                        time.sleep(0.5)
+                if not replaced and os.path.exists(tmp_output):
+                    try:
+                        import shutil
+                        shutil.copyfile(tmp_output, input_filepath)
+                        os.remove(tmp_output)
+                        logger.info("Copied re-encoded H.264 video to destination: %s", input_filepath)
+                    except Exception as c_err:
+                        logger.warning("Could not finalize H.264 replace: %s", str(c_err))
+            else:
+                if os.path.exists(tmp_output):
+                    try:
+                        os.remove(tmp_output)
+                    except Exception:
+                        pass
+                logger.warning("FFmpeg re-encoding warning (code %d): %s", res.returncode, res.stderr)
+        except Exception as err:
+            logger.warning("H.264 re-encoding step failed: %s", str(err))
+        return input_filepath
+
+    @staticmethod
     def process_video(
         filepath: str, 
         road_id: Optional[int] = None, 
+        video_id: Optional[int] = None,
         db: Optional[Session] = None
     ) -> Dict[str, Any]:
         """
@@ -110,14 +170,21 @@ class VideoProcessor:
         window_scores = []
         window_confs = []
 
+        frame_stride = 3
+        last_result = None
+
         try:
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
                 
-                # Run frame-by-frame vehicle and congestion detection
-                result = ai_processor.process_frame(frame, frame_count, lanes=lanes, length_km=length_km)
+                # Run frame-by-frame vehicle and congestion detection with frame_stride optimization
+                if frame_count % frame_stride == 0 or last_result is None:
+                    result = ai_processor.process_frame(frame, frame_count, road_id=road_id if road_id else 1)
+                    last_result = result
+                else:
+                    result = last_result
                 
                 # Write annotated frame
                 out.write(frame)
@@ -129,7 +196,7 @@ class VideoProcessor:
                 bus_sum += counts.get("bus", 0)
                 truck_sum += counts.get("truck", 0)
                 motorcycle_sum += counts.get("motorcycle", 0)
-                all_confidences.extend(result["confidences"])
+                all_confidences.append(result.get("confidence", 0.85))
                 congestion_scores_sum += result["congestion_score"]
 
                 # Accumulate window interval metrics
@@ -139,20 +206,22 @@ class VideoProcessor:
                 window_truck += counts.get("truck", 0)
                 window_moto += counts.get("motorcycle", 0)
                 window_scores.append(result["congestion_score"])
-                window_confs.extend(result["confidences"])
+                window_confs.append(result.get("confidence", 0.85))
 
                 frame_count += 1
 
                 # Every 1-second interval or last frame: save time-series record to DB
                 if frame_count % interval_frames == 0 and db is not None and road_id is not None:
                     count_in_window = len(window_scores) or 1
-                    iv_veh = int(round(window_veh / count_in_window))
                     iv_car = int(round(window_car / count_in_window))
                     iv_bus = int(round(window_bus / count_in_window))
                     iv_truck = int(round(window_truck / count_in_window))
                     iv_moto = int(round(window_moto / count_in_window))
+                    # Enforce strict mathematical equality: total_vehicles == cars + motorcycles + buses + trucks
+                    iv_veh = iv_car + iv_bus + iv_truck + iv_moto
+                    
                     iv_score = round(sum(window_scores) / count_in_window, 2)
-                    iv_conf = round(sum(window_confs) / len(window_confs), 2) if window_confs else 0.85
+                    iv_conf = round(float(sum(window_confs) / len(window_confs)), 3) if window_confs else 0.0
 
                     if iv_score < settings.CONGESTION_THRESHOLD_LOW:
                         iv_level = "LOW"
@@ -163,15 +232,22 @@ class VideoProcessor:
                     else:
                         iv_level = "SEVERE"
 
+                    v_timestamp = round(frame_count / fps, 1)
+                    # Speed estimation: drops gracefully from free-flow (60 km/h) down to 5 km/h at heavy congestion
+                    road_speed_limit = 60.0
+                    avg_speed_est = max(5.0, round(road_speed_limit * (1.0 - min(1.0, iv_score / 100.0) * 0.85), 1))
+
                     telemetry_interval_entry = {
                         "road_id": road_id,
+                        "video_id": video_id,
                         "video_name": filename,
+                        "video_timestamp": v_timestamp,
                         "vehicle_count": iv_veh,
                         "car_count": iv_car,
                         "bus_count": iv_bus,
                         "truck_count": iv_truck,
                         "motorcycle_count": iv_moto,
-                        "average_speed": round(60.0 * (1.0 - min(1.0, iv_score / 100.0)), 1),
+                        "average_speed": avg_speed_est,
                         "congestion_level": iv_level,
                         "confidence": iv_conf,
                         "processed_at": datetime.now(timezone.utc)
@@ -179,8 +255,39 @@ class VideoProcessor:
 
                     try:
                         TrafficRepository.create_traffic_record(db, telemetry_interval_entry)
+                        
+                        # Generate AI Incident Alert if video detection observes High or Severe Congestion
+                        if iv_level in ["HIGH", "SEVERE"]:
+                            from app.models.models import Alert
+                            existing_ai_alert = db.query(Alert).filter(
+                                Alert.road_id == road_id,
+                                Alert.status == "Active",
+                                Alert.alert_type == "AI Congestion Spike"
+                            ).first()
+
+                            if not existing_ai_alert:
+                                road_obj = db.query(Road).filter(Road.id == road_id).first()
+                                op_id = road_obj.assigned_operator_id if road_obj else None
+                                r_name = road_obj.road_name if road_obj else f"Corridor #{road_id}"
+
+                                ai_alert = Alert(
+                                    road_id=road_id,
+                                    alert_type="AI Congestion Spike",
+                                    severity="Critical" if iv_level == "SEVERE" else "High",
+                                    status="Active",
+                                    notes=f"AI Video Detection Alert: Real-time YOLO model analysis detected {iv_veh} vehicles with congestion level '{iv_level}' (confidence: {iv_conf * 100:.1f}%) on {r_name}.",
+                                    assigned_operator_id=op_id,
+                                    created_at=datetime.now(timezone.utc)
+                                )
+                                db.add(ai_alert)
+                                db.commit()
+
                         ttl_cache.invalidate()
                     except Exception as t_err:
+                        try:
+                            db.rollback()
+                        except Exception:
+                            pass
                         logger.warning("Could not persist interval telemetry record: %s", str(t_err))
 
                     # Reset interval window
@@ -206,6 +313,9 @@ class VideoProcessor:
             raise ValueError("Video is corrupted (zero readable frames).")
 
         logger.info("Video validation and AI traversal completed. Successfully processed %d frames.", frame_count)
+
+        # Transcode processed output video to browser-compatible H.264 format
+        VideoProcessor.reencode_to_h264(output_filepath)
 
         # 4. Compute overall averages
         avg_vehicle_count = round(total_vehicles_sum / frame_count, 1)
@@ -262,7 +372,7 @@ class VideoProcessor:
                 return
 
             logger.info("Background task started: processing video ID %d (%s)...", video_id, filepath)
-            stats = cls.process_video(filepath, road_id=road_id, db=db)
+            stats = cls.process_video(filepath, road_id=road_id, video_id=video_id, db=db)
 
             # Update UploadedVideo record with stats
             video_record.total_frames = stats["total_frames"]
@@ -298,8 +408,9 @@ class VideoProcessor:
             ttl_cache.invalidate()
             logger.info("Background task complete: Video ID %d processed successfully.", video_id)
 
-            # Clean up raw video file if different from output
-            if os.path.exists(filepath) and filepath != stats["processed_filepath"]:
+            # Clean up raw video file if temporary and different from output (do not delete source videos in videos folder)
+            is_source_video = "uploads" in filepath and ("videos" in filepath or "uploads\\videos" in filepath or "uploads/videos" in filepath)
+            if not is_source_video and os.path.exists(filepath) and filepath != stats["processed_filepath"]:
                 try:
                     os.remove(filepath)
                 except Exception:

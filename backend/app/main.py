@@ -48,12 +48,22 @@ async def generic_exception_handler(request: Request, exc: Exception):
         }
     )
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+# Mount static video uploads directory for video streaming
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("uploads/processed", exist_ok=True)
+os.makedirs("uploads/videos", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 from fastapi import APIRouter, Depends
 from app.middleware.dependencies import require_roles
-from app.routers import traffic, analytics, auth, admin, operator, assignments, zones, reports, roads, operators, alerts, videos
+from app.routers import traffic, analytics, auth, admin, operator, assignments, zones, reports, roads, operators, alerts, videos, public
 
 # Register Routers (Base /api/v1)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(public.router, prefix=settings.API_V1_STR)
 app.include_router(roads.router, prefix=settings.API_V1_STR)
 app.include_router(operators.router, prefix=settings.API_V1_STR)
 app.include_router(alerts.router, prefix=settings.API_V1_STR)

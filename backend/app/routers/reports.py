@@ -49,7 +49,7 @@ def get_system_reports(
         },
         "zone_breakdown": zone_metrics,
         "recent_system_logs": [
-            {"id": 1, "type": "ASSIGNMENT", "detail": "Corridor 'Wall Street Junction' reassigned to Operator Sarah Jenkins", "time": "5 mins ago"},
+            {"id": 1, "type": "ASSIGNMENT", "detail": "Corridor assignment roster synchronized", "time": "5 mins ago"},
             {"id": 2, "type": "SECURITY", "detail": "Admin Chief Controller authorized new operator account", "time": "12 mins ago"},
             {"id": 3, "type": "ZONE", "detail": "North Zone monitoring perimeter created successfully", "time": "25 mins ago"},
             {"id": 4, "type": "TELEMETRY", "detail": "Edge AI telemetry sync complete across 128 junctions", "time": "42 mins ago"}

@@ -106,8 +106,9 @@ def list_alerts(
     - Operator: view strictly alerts on assigned duty corridors or directly assigned to account.
     - Eager loads relationships to guarantee < 500ms execution.
     """
+    is_operator = (current_user.role or "").upper() == "OPERATOR"
     # Fast path for operators with no assigned corridors
-    if current_user.role == "Operator":
+    if is_operator:
         assigned_road_ids = [r.id for r in db.query(Road.id).filter(Road.assigned_operator_id == current_user.id).all()]
         has_direct_alerts = db.query(Alert.id).filter(Alert.assigned_operator_id == current_user.id).first()
         if not assigned_road_ids and not has_direct_alerts:
@@ -119,7 +120,7 @@ def list_alerts(
     )
 
     # Operator Scoping
-    if current_user.role == "Operator":
+    if is_operator:
         query = query.filter(
             or_(
                 Alert.road_id.in_(assigned_road_ids) if assigned_road_ids else False,
@@ -273,7 +274,7 @@ def delete_alert(
     db: Session = Depends(get_db)
 ):
     """DELETE /api/v1/alerts/{alert_id} - Admin delete alert."""
-    if current_user.role != "Admin":
+    if (current_user.role or "").upper() != "ADMIN":
         raise HTTPException(status_code=403, detail="Forbidden. Only Administrators can delete alerts.")
 
     alert = db.query(Alert).filter(Alert.id == alert_id).first()

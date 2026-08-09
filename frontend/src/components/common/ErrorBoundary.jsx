@@ -32,8 +32,17 @@ export class ErrorBoundary extends Component {
             
             <h2 className="text-2xl font-bold text-slate-100">Application Rendering Exception</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              TrafficVision AI encountered an unexpected UI rendering fault. The system has automatically logged this incident.
+              TrafficVision AI encountered an unexpected UI rendering fault. Diagnostic details:
             </p>
+
+            {this.state.error && (
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-left font-mono text-[10px] text-rose-300 overflow-x-auto max-h-40">
+                <p className="font-bold mb-1">{this.state.error.name}: {this.state.error.message}</p>
+                {this.state.error.stack && (
+                  <pre className="mt-1 text-slate-400 whitespace-pre-wrap">{this.state.error.stack}</pre>
+                )}
+              </div>
+            )}
 
             <div className="pt-4">
               <Button onClick={this.handleReload} className="w-full space-x-2">

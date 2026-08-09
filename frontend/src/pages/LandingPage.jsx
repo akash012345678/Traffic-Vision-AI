@@ -55,17 +55,22 @@ export const LandingPage = () => {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
-            <Link to="/login">
+            <Link to="/public/dashboard">
               <Button size="lg" className="w-full sm:w-auto space-x-2 px-8 py-3.5 text-base">
-                <span>Access System Portal</span>
+                <span>Browse Public Portal</span>
                 <FaArrowRight />
               </Button>
             </Link>
-            <a href="#about">
+            <Link to="/signup">
               <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8 py-3.5 text-base">
-                Explore Capabilities
+                Public Sign Up
               </Button>
-            </a>
+            </Link>
+            <Link to="/login">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8 py-3.5 text-base">
+                Portal Login
+              </Button>
+            </Link>
           </div>
 
           {/* Key Metrics Bar */}
@@ -209,8 +214,13 @@ export const LandingPage = () => {
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-slate-800">
-                  <span className="text-xs text-slate-400 font-medium">Public Transparency Portal</span>
+                <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+                  <Link to="/public/dashboard" className="text-xs text-cyan-400 font-bold hover:underline flex items-center gap-1">
+                    <span>Explore Portal</span> <FaArrowRight className="text-[10px]" />
+                  </Link>
+                  <Link to="/signup" className="text-xs text-teal-400 font-bold hover:underline flex items-center gap-1">
+                    <span>Sign Up</span> <FaArrowRight className="text-[10px]" />
+                  </Link>
                 </div>
               </Card>
 

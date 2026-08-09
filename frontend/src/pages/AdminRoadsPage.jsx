@@ -6,6 +6,7 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import apiClient from '../services/api';
+import { AIVideoModal } from '../components/traffic/AIVideoModal';
 import { 
   FaRoad, 
   FaPlus, 
@@ -34,7 +35,9 @@ import {
   FaTachometerAlt,
   FaCar,
   FaRuler,
-  FaLayerGroup
+  FaLayerGroup,
+  FaVideo,
+  FaPlay
 } from 'react-icons/fa';
 
 export const AdminRoadsPage = () => {
@@ -44,6 +47,10 @@ export const AdminRoadsPage = () => {
   const [zones, setZones] = useState([]);
   const [telemetryMap, setTelemetryMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+
+  // Video viewer modal state
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [selectedVideoRoadId, setSelectedVideoRoadId] = useState(null);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -730,6 +737,15 @@ export const AdminRoadsPage = () => {
 
                         {/* 9. Actions Column */}
                         <td className="py-3.5 px-4 text-right space-x-1.5">
+                          {/* View AI Video Button */}
+                          <button
+                            onClick={() => { setSelectedVideoRoadId(r.id); setIsVideoModalOpen(true); }}
+                            className="p-1.5 rounded-lg bg-blue-900/40 border border-blue-500/40 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors"
+                            title="▶ View AI Video Telemetry"
+                          >
+                            <FaPlay className="text-[10px]" />
+                          </button>
+
                           {/* View Details */}
                           <button
                             onClick={() => handleOpenView(r)}
@@ -1354,6 +1370,13 @@ export const AdminRoadsPage = () => {
             </div>
           </div>
         )}
+
+        {/* AI Video Viewer Modal */}
+        <AIVideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          roadId={selectedVideoRoadId}
+        />
 
       </div>
     </DashboardLayout>

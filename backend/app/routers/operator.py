@@ -28,7 +28,7 @@ def get_operator_dashboard_stats(
     scoped to roads assigned to the authenticated operator.
     Fast path: returns HTTP 200 immediately if 0 roads are assigned.
     """
-    if current_user.role == "Admin":
+    if (current_user.role or "").upper() == "ADMIN":
         roads = db.query(Road).all()
     else:
         roads = db.query(Road).filter(Road.assigned_operator_id == current_user.id).all()
@@ -190,7 +190,7 @@ def get_assigned_roads(
     Admins can view all roads.
     Fast path: returns empty list immediately if 0 roads are assigned.
     """
-    if current_user.role == "Admin":
+    if (current_user.role or "").upper() == "ADMIN":
         roads = db.query(Road).all()
     else:
         roads = db.query(Road).filter(Road.assigned_operator_id == current_user.id).all()
@@ -249,7 +249,7 @@ def get_assigned_alerts(
     Operator API: View ONLY alerts corresponding to roads assigned to the logged-in operator.
     Fast path: returns empty list immediately if 0 roads are assigned.
     """
-    if current_user.role == "Admin":
+    if (current_user.role or "").upper() == "ADMIN":
         alerts = db.query(Alert).all()
     else:
         assigned_road_ids = [r.id for r in db.query(Road.id).filter(Road.assigned_operator_id == current_user.id).all()]
@@ -290,7 +290,7 @@ def update_road_status(
     if not road:
         raise HTTPException(status_code=404, detail="Road not found")
 
-    if current_user.role != "Admin" and road.assigned_operator_id != current_user.id:
+    if (current_user.role or "").upper() != "ADMIN" and road.assigned_operator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden. You can only update roads assigned to your account."

@@ -14,10 +14,69 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class SignupRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+
 class AuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: dict
+
+@router.post("/signup", response_model=AuthTokenResponse, status_code=status.HTTP_201_CREATED)
+def signup(payload: SignupRequest, db: Session = Depends(get_db)):
+    """
+    Public User Registration Endpoint: Creates a new user with PUBLIC role.
+    """
+    from app.utils.security import hash_password
+
+    email_clean = payload.email.strip().lower()
+    existing_user = db.query(User).filter(func.lower(User.email) == email_clean).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email address already exists. Please sign in."
+        )
+
+    pw_hash = hash_password(payload.password.strip())
+    new_user = User(
+        name=payload.name.strip(),
+        email=email_clean,
+        password_hash=pw_hash,
+        role="PUBLIC",
+        status="ACTIVE",
+        phone=payload.phone.strip() if payload.phone else None
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    token_data = {
+        "sub": str(new_user.id),
+        "email": new_user.email,
+        "role": new_user.role,
+        "name": new_user.name,
+    }
+    access_token = create_access_token(data=token_data)
+
+    user_profile = {
+        "id": new_user.id,
+        "name": new_user.name,
+        "email": new_user.email,
+        "role": new_user.role,
+        "phone": getattr(new_user, "phone", None),
+        "status": getattr(new_user, "status", "ACTIVE"),
+        "zone": None,
+        "created_at": new_user.created_at.isoformat() if new_user.created_at else None
+    }
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=user_profile
+    )
 
 @router.post("/login", response_model=AuthTokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
