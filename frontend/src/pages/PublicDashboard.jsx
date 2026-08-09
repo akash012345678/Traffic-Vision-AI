@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   FaRoad, FaExclamationTriangle, FaCheckCircle, FaClock, 
   FaSync, FaArrowRight, FaShieldAlt, FaTachometerAlt, FaCar, FaMapMarkerAlt,
-  FaStar, FaRegStar, FaUserCheck, FaRoute, FaLocationArrow, FaCarSide, FaLightbulb, FaExternalLinkAlt
+  FaStar, FaRegStar, FaUserCheck, FaRoute, FaLocationArrow, FaCarSide, FaLightbulb, FaExternalLinkAlt, FaBrain, FaMagic
 } from 'react-icons/fa';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { Card } from '../components/ui/Card';
@@ -17,6 +17,7 @@ export const PublicDashboard = () => {
   const [stats, setStats] = useState(null);
   const [roads, setRoads] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,15 +42,17 @@ export const PublicDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const [statsRes, roadsRes, recsRes] = await Promise.all([
+      const [statsRes, roadsRes, recsRes, predsRes] = await Promise.all([
         apiClient.get('/public/dashboard-stats'),
         apiClient.get('/public/roads'),
-        apiClient.get('/public/recommendations')
+        apiClient.get('/public/recommendations'),
+        apiClient.get('/public/predictions')
       ]);
       setStats(statsRes || {});
       const list = Array.isArray(roadsRes) ? roadsRes : [];
       setRoads(list);
       setRecommendations(recsRes?.recommendations || []);
+      setPredictions(predsRes?.predictions || []);
     } catch (err) {
       console.error("Public dashboard telemetry fetch error:", err);
       setError('Failed to fetch real-time public traffic telemetry.');
@@ -341,6 +344,67 @@ export const PublicDashboard = () => {
 
                     <Link
                       to={`/public/map?road_id=${rec.road_id}`}
+                      className="text-xs text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1"
+                    >
+                      <span>Inspect Map</span>
+                      <FaExternalLinkAlt className="text-[9px]" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI Traffic Prediction Engine (15-Minute ML Forecast) */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <FaBrain className="text-purple-400 text-sm" />
+              <span>AI Traffic Prediction Engine (15m Forecast)</span>
+              <span className="text-xs font-mono text-purple-300 font-normal">({predictions.length} Corridors Evaluated)</span>
+            </h2>
+            <span className="text-[11px] text-slate-400">Scikit-Learn Machine Learning Model</span>
+          </div>
+
+          {predictions.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 glass-panel rounded-xl border border-slate-800 text-xs">
+              No traffic prediction telemetry available.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {predictions.slice(0, 3).map((p) => (
+                <div key={p.road_id} className="glass-panel p-4 rounded-xl border border-purple-500/30 bg-slate-900/90 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-xs font-mono font-bold text-teal-400 block">{p.road_code}</span>
+                      <h3 className="text-sm font-bold text-slate-100">{p.road_name}</h3>
+                    </div>
+                    <StatusBadge status={p.predicted_congestion} type={p.predicted_congestion === 'CRITICAL' || p.predicted_congestion === 'HIGH' ? 'red' : p.predicted_congestion === 'MODERATE' ? 'amber' : 'green'} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-xs font-mono mt-2">
+                    <div>
+                      <span className="text-[9px] text-slate-500 block uppercase">CURRENT</span>
+                      <span className="font-bold text-slate-200 block">{p.current_vehicle_count} veh</span>
+                      <span className="text-[10px] text-sky-400 block">{p.current_average_speed} km/h</span>
+                    </div>
+                    <div className="border-l border-slate-800 pl-2">
+                      <span className="text-[9px] text-purple-400 font-bold block uppercase flex items-center gap-1">
+                        <FaMagic className="text-[8px]" /> PREDICTED
+                      </span>
+                      <span className="font-bold text-purple-300 block">{p.predicted_vehicle_count} veh</span>
+                      <span className="text-[10px] text-sky-300 block">{p.predicted_average_speed} km/h</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Target: <strong className="text-purple-300">15m Ahead</strong>
+                    </span>
+
+                    <Link
+                      to={`/public/map?road_id=${p.road_id}`}
                       className="text-xs text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1"
                     >
                       <span>Inspect Map</span>
