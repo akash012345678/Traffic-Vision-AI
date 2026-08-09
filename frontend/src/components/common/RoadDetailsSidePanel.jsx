@@ -283,6 +283,59 @@ export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, err
 
                 </div>
 
+                {/* TRAVEL-TIME ESTIMATION WIDGET (MILESTONE 2 PHASE 3) */}
+                {(() => {
+                  const len = parseFloat(roadData?.length_km || 2.5);
+                  const limit = parseFloat(roadData?.speed_limit || 60);
+                  const spd = parseFloat(currentTelemetry?.average_speed || 0);
+
+                  if (spd <= 0) {
+                    return (
+                      <div className="glass-panel p-3.5 rounded-xl border border-slate-800 text-slate-400 text-center font-mono text-[11px]">
+                        Travel time unavailable (Zero / missing telemetry speed)
+                      </div>
+                    );
+                  }
+
+                  const freeMins = ((len / limit) * 60).toFixed(1);
+                  const curMins = ((len / Math.max(5, spd)) * 60).toFixed(1);
+                  const delayMins = Math.max(0, curMins - freeMins).toFixed(1);
+
+                  return (
+                    <div className="glass-panel p-4 rounded-xl border border-teal-500/30 bg-teal-950/10 space-y-2.5 font-mono">
+                      <div className="flex justify-between items-center border-b border-teal-500/20 pb-2">
+                        <span className="text-xs font-bold text-slate-100 flex items-center gap-2">
+                          <FaClock className="text-teal-400" />
+                          <span>Corridor Travel-Time Estimation</span>
+                        </span>
+                        <span className="text-[10px] text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/30">
+                          {len} km Corridor
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+                          <span className="text-[9px] text-slate-500 font-sans uppercase block">Free-Flow</span>
+                          <span className="text-sm font-bold text-emerald-400">{freeMins} min</span>
+                          <span className="text-[8px] text-slate-500 block">@ {limit} km/h</span>
+                        </div>
+
+                        <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+                          <span className="text-[9px] text-slate-500 font-sans uppercase block">Current Est</span>
+                          <span className="text-sm font-bold text-sky-400">{curMins} min</span>
+                          <span className="text-[8px] text-slate-500 block">@ {spd} km/h</span>
+                        </div>
+
+                        <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+                          <span className="text-[9px] text-slate-500 font-sans uppercase block">Traffic Delay</span>
+                          <span className="text-sm font-bold text-amber-400">+{delayMins} min</span>
+                          <span className="text-[8px] text-slate-500 block">Congestion Loss</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* AI VEHICLE BREAKDOWN PANEL (only shown when AI data is available) */}
                 {currentTelemetry?.ai_status === 'ACTIVE' && (
                   <div className="glass-panel p-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 space-y-3">

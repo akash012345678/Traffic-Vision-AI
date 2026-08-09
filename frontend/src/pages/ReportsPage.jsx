@@ -136,12 +136,14 @@ export const ReportsPage = () => {
   const fetchPredictions = async () => {
     setIsPredLoading(true);
     try {
-      const [predRes, fcRes] = await Promise.all([
+      const [predRes, fcRes, ttRes] = await Promise.all([
         apiClient.get('/predictions/traffic'),
-        apiClient.get('/predictions/congestion')
+        apiClient.get('/predictions/congestion'),
+        apiClient.get('/predictions/travel-time')
       ]);
       setPredictionData(predRes);
       setForecastData(fcRes);
+      setTravelTimeData(ttRes);
     } catch (err) {
       console.error("Prediction fetch error:", err);
       showError(err.message || 'Failed to load AI traffic predictions');
@@ -808,6 +810,76 @@ export const ReportsPage = () => {
                       <strong className="text-amber-400 font-mono block text-[10px] uppercase mb-1">EXPLAINABLE FORECAST RATIONALE</strong>
                       {fc.forecast_explanation}
                     </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Corridor Travel-Time Estimator Section (Milestone 2 Phase 3) */}
+            <div className="space-y-4 pt-4 border-t border-slate-800">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <FaClock className="text-sky-400" />
+                  <span>AI Corridor Travel-Time Estimator</span>
+                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono px-2 py-0.5 rounded-full font-bold">
+                    Distance & Speed Telemetry Formula
+                  </span>
+                </h3>
+                <span className="text-xs font-mono text-slate-400">
+                  Formula: <strong className="text-sky-300">Time (mins) = (Distance / Speed) × 60</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(travelTimeData?.estimates || []).map((tt) => (
+                  <div key={tt.road_id} className="glass-panel p-4 rounded-xl border border-sky-500/30 bg-slate-900/90 space-y-3 font-mono">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-xs font-bold text-teal-400 block">{tt.road_code}</span>
+                        <h4 className="text-sm font-bold text-slate-100 font-sans">{tt.road_name}</h4>
+                        <span className="text-[10px] text-slate-400 font-sans">{tt.zone}</span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded border border-sky-500/30">
+                        {tt.distance_km} km Corridor
+                      </span>
+                    </div>
+
+                    {tt.status === 'Available' ? (
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                        <div>
+                          <span className="text-[9px] text-slate-500 block uppercase">Free-Flow</span>
+                          <span className="font-bold text-emerald-400 block">{tt.free_flow_travel_time_minutes} min</span>
+                          <span className="text-[9px] text-slate-500 block">@ {tt.speed_limit_kmh} km/h</span>
+                        </div>
+
+                        <div>
+                          <span className="text-[9px] text-slate-500 block uppercase">Current</span>
+                          <span className="font-bold text-sky-400 block">{tt.current_travel_time_minutes} min</span>
+                          <span className="text-[9px] text-sky-300 block">@ {tt.current_speed_kmh} km/h</span>
+                        </div>
+
+                        <div>
+                          <span className="text-[9px] text-slate-500 block uppercase">15m Forecast</span>
+                          <span className="font-bold text-purple-300 block">{tt.predicted_travel_time_minutes} min</span>
+                          <span className="text-[9px] text-purple-400 block">@ {tt.predicted_speed_kmh} km/h</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-center text-slate-400 text-xs">
+                        {tt.status}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800/80 pt-2 font-sans">
+                      <span>Traffic Delay: <strong className="text-amber-400">+{tt.current_delay_minutes ?? 0} mins</strong></span>
+                      <Link
+                        to={`/public/map?road_id=${tt.road_id}`}
+                        className="text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1"
+                      >
+                        <span>Inspect Map</span>
+                        <FaExternalLinkAlt className="text-[8px]" />
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -309,3 +309,88 @@ def get_congestion_forecasts(db: Session, road_id: Optional[int] = None, is_publ
 
     return payload
 
+def get_travel_time_estimates(db: Session, road_id: Optional[int] = None, is_public_safe: bool = False) -> Dict[str, Any]:
+    """
+    Travel-Time Estimation Engine (Milestone 2 - Phase 3).
+    Calculates exact corridor travel time based on real road length (km), speed limits (km/h),
+    current observed average traffic speed, and 15-minute ML predicted speed.
+    Formula: Travel Time (mins) = (Distance / Speed) * 60
+    Safely handles zero/missing speeds without division-by-zero errors.
+    """
+    pred_res = train_and_predict_traffic(db, road_id=road_id, is_public_safe=False)
+    predictions = pred_res.get("predictions", [])
+
+    estimates = []
+    for p in predictions:
+        r_id = p["road_id"]
+        road_obj = db.query(Road).filter(Road.id == r_id).first()
+        length_km = float(road_obj.length_km if road_obj and road_obj.length_km else 2.5)
+        speed_limit = float(road_obj.speed_limit if road_obj and road_obj.speed_limit else 60.0)
+
+        cur_speed = float(p.get("current_average_speed") or 0.0)
+        pred_speed = float(p.get("predicted_average_speed") or 0.0)
+
+        # Division-by-Zero Safety Check
+        if cur_speed <= 0 or speed_limit <= 0:
+            estimates.append({
+                "road_id": r_id,
+                "road_code": p["road_code"],
+                "road_name": p["road_name"],
+                "zone": p["zone"],
+                "distance_km": length_km,
+                "speed_limit_kmh": speed_limit,
+                "status": "Travel time unavailable",
+                "current_speed_kmh": cur_speed,
+                "current_travel_time_minutes": None,
+                "current_congestion": p["current_congestion"],
+                "estimated_at": datetime.now(timezone.utc).isoformat()
+            })
+            continue
+
+        # Travel Time Calculations (Time = Distance / Speed * 60)
+        free_flow_mins = round((length_km / speed_limit) * 60.0, 1)
+        cur_travel_mins = round((length_km / max(5.0, cur_speed)) * 60.0, 1)
+        pred_travel_mins = round((length_km / max(5.0, pred_speed)) * 60.0, 1)
+        cur_delay_mins = round(max(0.0, cur_travel_mins - free_flow_mins), 1)
+        pred_delay_mins = round(max(0.0, pred_travel_mins - free_flow_mins), 1)
+
+        estimates.append({
+            "road_id": r_id,
+            "road_code": p["road_code"],
+            "road_name": p["road_name"],
+            "zone": p["zone"],
+            "distance_km": length_km,
+            "speed_limit_kmh": speed_limit,
+            "free_flow_travel_time_minutes": free_flow_mins,
+            "current_speed_kmh": cur_speed,
+            "current_travel_time_minutes": cur_travel_mins,
+            "current_congestion": p["current_congestion"],
+            "current_delay_minutes": cur_delay_mins,
+            "predicted_speed_kmh": pred_speed,
+            "predicted_travel_time_minutes": pred_travel_mins,
+            "predicted_congestion": p["predicted_congestion"],
+            "predicted_delay_minutes": pred_delay_mins,
+            "status": "Available",
+            "prediction_horizon": "15 Minutes Ahead",
+            "estimated_at": datetime.now(timezone.utc).isoformat()
+        })
+
+    payload = {
+        "count": len(estimates),
+        "prediction_horizon": "15 Minutes Ahead",
+        "estimates": estimates,
+        "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL",
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    if is_public_safe:
+        return {
+            "count": payload["count"],
+            "prediction_horizon": payload["prediction_horizon"],
+            "estimates": payload["estimates"],
+            "data_source": payload["data_source"]
+        }
+
+    return payload
+
+
