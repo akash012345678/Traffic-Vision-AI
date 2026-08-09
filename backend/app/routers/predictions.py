@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 from app.database.session import get_db
 from app.models.models import User
 from app.middleware.dependencies import require_roles
-from app.services.prediction_engine import train_and_predict_traffic
+from app.services.prediction_engine import train_and_predict_traffic, get_congestion_forecasts
 
 router = APIRouter(prefix="/predictions", tags=["Traffic Predictions Engine"])
 
@@ -21,3 +21,16 @@ def get_traffic_predictions(
     Model: scikit-learn RandomForestRegressor with chronological 80/20 train/test split.
     """
     return train_and_predict_traffic(db, road_id=road_id, is_public_safe=False)
+
+@router.get("/congestion")
+def get_traffic_congestion_forecasts(
+    road_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Admin", "Operator"]))
+) -> Dict[str, Any]:
+    """
+    Control Center Endpoint (Admin & Operator):
+    Returns 15-minute data-driven congestion level forecasts built on top of the completed RandomForestRegressor prediction model.
+    Evaluates volume changes and speed velocity to forecast LOW, MODERATE, HIGH, or CRITICAL congestion transitions.
+    """
+    return get_congestion_forecasts(db, road_id=road_id, is_public_safe=False)

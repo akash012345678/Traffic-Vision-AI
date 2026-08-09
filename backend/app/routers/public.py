@@ -414,7 +414,7 @@ def get_public_traffic_recommendations(
         "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
     }
 
-from app.services.prediction_engine import train_and_predict_traffic
+from app.services.prediction_engine import train_and_predict_traffic, get_congestion_forecasts
 
 @router.get("/predictions")
 def get_public_traffic_predictions(
@@ -426,3 +426,14 @@ def get_public_traffic_predictions(
     Clearly labeled 'AI Traffic Prediction' with prediction horizon and 100% real DB telemetry metrics.
     """
     return train_and_predict_traffic(db, road_id=road_id, is_public_safe=True)
+
+@router.get("/predictions/congestion")
+def get_public_congestion_forecasts(
+    road_id: int = None,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Public Read-Only Endpoint: Returns 15-minute data-driven AI Congestion Forecasts.
+    Clearly labeled 'AI Congestion Forecast' with prediction horizon and explainable DB rationale.
+    """
+    return get_congestion_forecasts(db, road_id=road_id, is_public_safe=True)
