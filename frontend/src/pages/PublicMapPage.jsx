@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   FaMapMarkedAlt, FaRoad, FaTachometerAlt, FaCar, FaMotorcycle, FaBus, FaTruck, FaSync, FaExclamationTriangle, 
-  FaInfoCircle, FaSun, FaMoon, FaGlobeAmericas 
+  FaInfoCircle, FaSun, FaMoon, FaGlobeAmericas, FaFire, FaLayerGroup, FaDotCircle
 } from 'react-icons/fa';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -80,6 +80,8 @@ export const PublicMapPage = () => {
   const targetRoadId = searchParams.get('road_id');
 
   const [nodes, setNodes] = useState([]);
+  const [heatmapPoints, setHeatmapPoints] = useState([]);
+  const [viewMode, setViewMode] = useState('combined'); // 'combined' (Heat + Markers), 'heatmap', or 'markers'
   const [selectedNode, setSelectedNode] = useState(null);
   const [mapCenter, setMapCenter] = useState([40.7128, -74.0060]); // NYC default center fallback
   const [mapStyle, setMapStyle] = useState('voyager'); // Default: 'voyager' (Bright & Crisp), 'osm', or 'dark'
@@ -90,9 +92,13 @@ export const PublicMapPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get('/public/roads');
-      const list = Array.isArray(res) ? res : [];
+      const [roadsRes, heatRes] = await Promise.all([
+        apiClient.get('/public/roads'),
+        apiClient.get('/public/traffic/heatmap')
+      ]);
+      const list = Array.isArray(roadsRes) ? roadsRes : [];
       setNodes(list);
+      setHeatmapPoints(Array.isArray(heatRes) ? heatRes : []);
 
       // Check if target road passed via URL
       if (targetRoadId && list.length > 0) {
@@ -230,14 +236,57 @@ export const PublicMapPage = () => {
           {/* Left: Real Geographic Leaflet Map */}
           <div className="lg:col-span-8 glass-panel rounded-2xl border border-slate-800 p-4 flex flex-col justify-between min-h-[560px] relative overflow-hidden">
             
-            {/* Title Bar, Map Style Switcher & Legend */}
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3 mb-3">
+            {/* Title Bar, Map Style Switcher & Heatmap Controls */}
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3 mb-3">
               <span className="text-xs font-mono text-teal-400 font-bold flex items-center gap-1.5">
                 <FaInfoCircle /> METROPOLITAN SPATIAL GIS TILES
               </span>
 
-              {/* Map Theme Toggle Buttons */}
-              <div className="flex items-center space-x-2">
+              {/* View Overlay Mode & Map Theme Toggle Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* View Overlay Selector (Combined, Heatmap, Markers) */}
+                <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px] font-mono">
+                  <button
+                    onClick={() => setViewMode('combined')}
+                    className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all ${
+                      viewMode === 'combined'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Combined GIS Heatmap & 3D Markers"
+                  >
+                    <FaLayerGroup className="text-xs" />
+                    <span>Combined</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewMode('heatmap')}
+                    className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all ${
+                      viewMode === 'heatmap'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Traffic Density Heatmap Overlay"
+                  >
+                    <FaFire className="text-xs text-amber-950" />
+                    <span>Heatmap</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewMode('markers')}
+                    className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all ${
+                      viewMode === 'markers'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="3D Road Markers Only"
+                  >
+                    <FaDotCircle className="text-xs" />
+                    <span>Markers</span>
+                  </button>
+                </div>
+
+                {/* Basemap Style Selector */}
                 <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px] font-mono">
                   <button
                     onClick={() => setMapStyle('voyager')}
@@ -249,7 +298,7 @@ export const PublicMapPage = () => {
                     title="Bright Voyager Map"
                   >
                     <FaSun className="text-xs" />
-                    <span>Bright Voyager</span>
+                    <span>Voyager</span>
                   </button>
 
                   <button
@@ -262,7 +311,7 @@ export const PublicMapPage = () => {
                     title="OpenStreetMap Standard"
                   >
                     <FaGlobeAmericas className="text-xs" />
-                    <span>OpenStreetMap</span>
+                    <span>OSM</span>
                   </button>
 
                   <button
@@ -310,43 +359,94 @@ export const PublicMapPage = () => {
                     maxZoom={19}
                   />
 
-                  {/* Geographic Markers for all monitored roads */}
-                  {nodes.map((node) => {
-                    if (!node.latitude || !node.longitude) return null;
-                    const isSelected = selectedNode?.id === node.id;
-                    const icon = createCongestionIcon(node.congestion_level, node.road_code, isSelected);
+                  {/* Heatmap Overlay Circles (Rendered in Combined or Heatmap viewMode) */}
+                  {(viewMode === 'combined' || viewMode === 'heatmap') &&
+                    (heatmapPoints.length > 0 ? heatmapPoints : nodes).map((hp) => {
+                      if (!hp.latitude || !hp.longitude) return null;
+                      const isSelected = selectedNode?.id === hp.road_id || selectedNode?.id === hp.id;
+                      const color = hp.heat_color || (
+                        hp.congestion_level === 'HIGH' ? '#f97316' :
+                        hp.congestion_level === 'MODERATE' ? '#f59e0b' :
+                        (hp.congestion_level === 'CRITICAL' || hp.congestion_level === 'SEVERE') ? '#ef4444' : '#10b981'
+                      );
+                      const radius = hp.radius_meters || (
+                        hp.congestion_level === 'HIGH' ? 600 :
+                        hp.congestion_level === 'MODERATE' ? 450 :
+                        (hp.congestion_level === 'CRITICAL' || hp.congestion_level === 'SEVERE') ? 750 : 300
+                      );
 
-                    return (
-                      <Marker
-                        key={node.id}
-                        position={[node.latitude, node.longitude]}
-                        icon={icon}
-                        eventHandlers={{
-                          click: () => handleSelectRoad(node),
-                        }}
-                      >
-                        <Popup className="custom-leaflet-popup">
-                          <div className="p-1.5 font-sans text-xs text-slate-900">
-                            <span className="text-[10px] font-mono font-bold text-teal-600 block">{node.road_code}</span>
-                            <strong className="block text-sm font-bold text-slate-900 leading-snug">{node.road_name}</strong>
-                            <span className="text-[11px] text-slate-600 block mb-2">{node.zone}</span>
-                            <div className="pt-1.5 border-t border-slate-200 flex justify-between font-mono text-[11px] text-slate-800">
-                              <span>Vehicles: <strong>{node.vehicle_count} veh</strong></span>
-                              <span>Speed: <strong className="text-emerald-700">{node.average_speed} km/h</strong></span>
-                            </div>
-                            <div className="mt-2 pt-1 border-t border-slate-100 flex justify-between items-center">
-                              <span className="font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded text-white bg-slate-900">
-                                {node.congestion_level}
+                      return (
+                        <Circle
+                          key={`heat-circle-${hp.road_id || hp.id}`}
+                          center={[hp.latitude, hp.longitude]}
+                          radius={radius}
+                          pathOptions={{
+                            color: color,
+                            fillColor: color,
+                            fillOpacity: isSelected ? 0.65 : 0.40,
+                            weight: isSelected ? 3.5 : 1.8,
+                            dashArray: isSelected ? '6, 6' : null
+                          }}
+                          eventHandlers={{
+                            click: () => handleSelectRoad(hp),
+                          }}
+                        >
+                          <Popup className="custom-leaflet-popup">
+                            <div className="p-1 font-sans text-xs text-slate-900">
+                              <span className="text-[10px] font-mono font-bold text-amber-600 uppercase flex items-center gap-1">
+                                <FaFire className="text-amber-500" /> REAL DB HEATMAP INTENSITY
                               </span>
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                {formatTimeSafely(node.last_updated_at)}
-                              </span>
+                              <strong className="block text-sm font-bold text-slate-900 leading-snug">{hp.road_name}</strong>
+                              <div className="mt-1 pt-1 border-t border-slate-200 flex justify-between text-[11px] font-mono">
+                                <span>Density Intensity: <strong>{Math.round((hp.intensity || 0.5) * 100)}%</strong></span>
+                                <span>Volume: <strong>{hp.vehicle_count} veh</strong></span>
+                              </div>
                             </div>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    );
-                  })}
+                          </Popup>
+                        </Circle>
+                      );
+                    })
+                  }
+
+                  {/* Geographic Markers for all monitored roads (Rendered in Combined or Markers viewMode) */}
+                  {(viewMode === 'combined' || viewMode === 'markers') &&
+                    nodes.map((node) => {
+                      if (!node.latitude || !node.longitude) return null;
+                      const isSelected = selectedNode?.id === node.id;
+                      const icon = createCongestionIcon(node.congestion_level, node.road_code, isSelected);
+
+                      return (
+                        <Marker
+                          key={node.id}
+                          position={[node.latitude, node.longitude]}
+                          icon={icon}
+                          eventHandlers={{
+                            click: () => handleSelectRoad(node),
+                          }}
+                        >
+                          <Popup className="custom-leaflet-popup">
+                            <div className="p-1.5 font-sans text-xs text-slate-900">
+                              <span className="text-[10px] font-mono font-bold text-teal-600 block">{node.road_code}</span>
+                              <strong className="block text-sm font-bold text-slate-900 leading-snug">{node.road_name}</strong>
+                              <span className="text-[11px] text-slate-600 block mb-2">{node.zone}</span>
+                              <div className="pt-1.5 border-t border-slate-200 flex justify-between font-mono text-[11px] text-slate-800">
+                                <span>Vehicles: <strong>{node.vehicle_count} veh</strong></span>
+                                <span>Speed: <strong className="text-emerald-700">{node.average_speed} km/h</strong></span>
+                              </div>
+                              <div className="mt-2 pt-1 border-t border-slate-100 flex justify-between items-center">
+                                <span className="font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded text-white bg-slate-900">
+                                  {node.congestion_level}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {formatTimeSafely(node.last_updated_at)}
+                                </span>
+                              </div>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })
+                  }
                 </MapContainer>
               )}
             </div>

@@ -238,6 +238,69 @@ def get_public_map_data(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
 
     return nodes
 
+@router.get("/traffic/heatmap")
+def get_public_traffic_heatmap(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
+    """
+    Public Read-Only Endpoint: Returns geographic traffic density & heatmap intensity values
+    calculated strictly from real database telemetry.
+    """
+    roads = db.query(Road).filter(Road.status == "Active").order_by(Road.id).all()
+    heatmap_points = []
+
+    for r in roads:
+        latest = (
+            db.query(TrafficData)
+            .filter(TrafficData.road_id == r.id)
+            .order_by(TrafficData.timestamp.desc(), TrafficData.id.desc())
+            .first()
+        )
+
+        congestion = (latest.congestion_level if latest else "LOW").upper()
+        v_count = latest.vehicle_count if latest else 0
+        speed = latest.average_speed if latest else float(r.speed_limit or 60)
+
+        # Intensity scoring mapped directly from real DB congestion level & vehicle count
+        if congestion in ["CRITICAL", "SEVERE"]:
+            intensity = 1.00
+            heat_color = "#ef4444" # Crimson Red
+            radius_meters = 750
+        elif congestion == "HIGH":
+            intensity = 0.75
+            heat_color = "#f97316" # Orange
+            radius_meters = 600
+        elif congestion == "MODERATE":
+            intensity = 0.50
+            heat_color = "#f59e0b" # Amber/Yellow
+            radius_meters = 450
+        else: # LOW
+            intensity = 0.25
+            heat_color = "#10b981" # Emerald Green
+            radius_meters = 300
+
+        ts_iso = (
+            latest.timestamp.isoformat()
+            if (latest and latest.timestamp)
+            else (r.updated_at.isoformat() if r.updated_at else datetime.now(timezone.utc).isoformat())
+        )
+
+        heatmap_points.append({
+            "road_id": r.id,
+            "road_name": r.road_name,
+            "road_code": r.road_code or f"RD-{r.id:03d}",
+            "zone": r.zone,
+            "latitude": r.latitude,
+            "longitude": r.longitude,
+            "vehicle_count": v_count,
+            "average_speed": speed,
+            "congestion_level": congestion,
+            "intensity": intensity,
+            "heat_color": heat_color,
+            "radius_meters": radius_meters,
+            "last_updated_at": ts_iso
+        })
+
+    return heatmap_points
+
 @router.get("/me/favorites")
 def get_user_favorite_roads(
     current_user: User = Depends(get_current_user),
