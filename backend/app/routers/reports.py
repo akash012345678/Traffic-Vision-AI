@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app.database.session import get_db
 from app.models.models import User, Road, Alert, TrafficData, Zone, OperatorRoadAssignment
 from app.middleware.dependencies import require_roles
@@ -189,5 +189,141 @@ def get_traffic_reports(
         },
         "road_reports": road_reports,
         "telemetry_timeline": timeline,
+        "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
+    }
+
+@router.get("/traffic/trends")
+def get_traffic_trends(
+    road_id: Optional[int] = Query(None),
+    zone: Optional[str] = Query(None),
+    time_range: str = Query("24h"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Admin", "Operator"]))
+):
+    """
+    Retrieve time-series trend analysis from real database telemetry.
+    Aggregates vehicle volume trends, average speed trends, and congestion level transitions over time.
+    Calculates dynamic analytical summary text based on actual database values.
+    """
+    # 1. Base Query
+    query = db.query(TrafficData)
+
+    if road_id:
+        query = query.filter(TrafficData.road_id == road_id)
+    elif zone and zone != "ALL":
+        active_road_ids = [r.id for r in db.query(Road).filter(Road.zone.ilike(f"%{zone}%")).all()]
+        if active_road_ids:
+            query = query.filter(TrafficData.road_id.in_(active_road_ids))
+
+    # 2. Time Range Filter
+    now = datetime.now(timezone.utc)
+    if time_range == "1h":
+        cutoff = now - timedelta(hours=1)
+        query = query.filter(TrafficData.timestamp >= cutoff)
+    elif time_range == "6h":
+        cutoff = now - timedelta(hours=6)
+        query = query.filter(TrafficData.timestamp >= cutoff)
+    elif time_range == "24h":
+        cutoff = now - timedelta(hours=24)
+        query = query.filter(TrafficData.timestamp >= cutoff)
+    elif time_range == "7d":
+        cutoff = now - timedelta(days=7)
+        query = query.filter(TrafficData.timestamp >= cutoff)
+
+    # 3. Retrieve Records Chronologically
+    records = query.order_by(TrafficData.timestamp.asc(), TrafficData.id.asc()).all()
+
+    if not records:
+        # Fallback query if time range filter returned empty set
+        records = db.query(TrafficData).order_by(TrafficData.timestamp.asc(), TrafficData.id.asc()).limit(50).all()
+
+    # 4. Map time-series trends
+    time_series = []
+    congestion_score_map = {"LOW": 1, "MODERATE": 2, "HIGH": 3, "CRITICAL": 4, "SEVERE": 4}
+
+    for idx, r in enumerate(records):
+        ts_iso = r.timestamp.isoformat() if r.timestamp else now.isoformat()
+        try:
+            t_label = r.timestamp.strftime("%H:%M") if r.timestamp else f"T-{idx}"
+        except Exception:
+            t_label = f"T-{idx}"
+
+        c_lvl = (r.congestion_level or "LOW").upper()
+        score = congestion_score_map.get(c_lvl, 1)
+
+        time_series.append({
+            "id": r.id,
+            "road_id": r.road_id,
+            "vehicle_count": r.vehicle_count,
+            "average_speed": round(r.average_speed, 1),
+            "congestion_level": c_lvl,
+            "congestion_score": score,
+            "timestamp": ts_iso,
+            "time_label": t_label
+        })
+
+    # 5. Calculate Trend Analytics Summary (Strictly from real data)
+    if time_series:
+        first_p = time_series[0]
+        last_p = time_series[-1]
+
+        v_start = first_p["vehicle_count"]
+        v_end = last_p["vehicle_count"]
+        v_diff = v_end - v_start
+        v_pct = round((v_diff / max(1, v_start)) * 100, 1)
+
+        if v_diff > 0:
+            vol_summary = f"Vehicle volume increased by +{v_pct}% ({v_start} -> {v_end} vehicles) during the selected period."
+        elif v_diff < 0:
+            vol_summary = f"Vehicle volume decreased by {v_pct}% ({v_start} -> {v_end} vehicles) during the selected period."
+        else:
+            vol_summary = f"Vehicle volume remained stable at {v_start} vehicles during the selected period."
+
+        s_start = first_p["average_speed"]
+        s_end = last_p["average_speed"]
+        s_diff = round(s_end - s_start, 1)
+
+        if s_diff > 1.0:
+            speed_dir = "increasing"
+            speed_summary = f"Average network speed increased by +{s_diff} km/h (from {s_start} km/h to {s_end} km/h), indicating improving traffic flow."
+        elif s_diff < -1.0:
+            speed_dir = "decreasing"
+            speed_summary = f"Average network speed decreased by {s_diff} km/h (from {s_start} km/h to {s_end} km/h), indicating developing congestion."
+        else:
+            speed_dir = "stable"
+            speed_summary = f"Average network speed remained stable around {s_end} km/h over the selected timeframe."
+
+        c_start = first_p["congestion_level"]
+        c_end = last_p["congestion_level"]
+        if c_start != c_end:
+            cong_summary = f"Congestion status transitioned from {c_start} to {c_end}."
+        else:
+            cong_summary = f"Congestion status remained at {c_start} throughout the period."
+    else:
+        vol_summary = "No telemetry data available for trend calculation."
+        speed_dir = "stable"
+        speed_summary = "No speed telemetry recorded."
+        cong_summary = "No congestion records available."
+
+    # Road Info
+    selected_road_name = "All Monitored Corridors"
+    if road_id:
+        r_obj = db.query(Road).filter(Road.id == road_id).first()
+        if r_obj:
+            selected_road_name = r_obj.road_name
+
+    return {
+        "selected_road_name": selected_road_name,
+        "time_range": time_range,
+        "sample_count": len(time_series),
+        "trend_summary": {
+            "volume_summary": vol_summary,
+            "speed_direction": speed_dir,
+            "speed_summary": speed_summary,
+            "congestion_summary": cong_summary,
+            "first_reading": time_series[0] if time_series else None,
+            "latest_reading": time_series[-1] if time_series else None
+        },
+        "time_series": time_series,
         "data_source": "AI Traffic Telemetry / Supabase Cloud PostgreSQL"
     }
