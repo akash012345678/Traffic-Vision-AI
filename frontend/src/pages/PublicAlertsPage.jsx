@@ -83,6 +83,14 @@ export const PublicAlertsPage = () => {
     }
   };
 
+  const handleClearAlertFilters = () => {
+    setSearchQuery('');
+    setSeverityFilter('ALL');
+    setZoneFilter('ALL');
+  };
+
+  const hasActiveFilters = searchQuery !== '' || severityFilter !== 'ALL' || zoneFilter !== 'ALL';
+
   return (
     <PublicLayout>
       <div className="space-y-6 animate-fade-in w-full">
@@ -130,7 +138,7 @@ export const PublicAlertsPage = () => {
               )}
             </div>
 
-            {/* Filters */}
+            {/* Filters & Clear Action */}
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto text-xs">
               
               {/* Severity Filter */}
@@ -161,6 +169,17 @@ export const PublicAlertsPage = () => {
                   {zones.map(z => <option key={z} value={z}>{z}</option>)}
                 </select>
               </div>
+
+              {/* Clear Filters Button */}
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearAlertFilters}
+                  className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                >
+                  <FaTimes className="text-xs" />
+                  <span>Clear Filters</span>
+                </button>
+              )}
 
             </div>
 

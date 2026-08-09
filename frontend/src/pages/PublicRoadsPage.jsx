@@ -78,6 +78,14 @@ export const PublicRoadsPage = () => {
     return 'red';
   };
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setZoneFilter('ALL');
+    setCongestionFilter('ALL');
+  };
+
+  const hasActiveFilters = searchQuery !== '' || zoneFilter !== 'ALL' || congestionFilter !== 'ALL';
+
   return (
     <PublicLayout>
       <div className="space-y-6 animate-fade-in w-full">
@@ -116,7 +124,7 @@ export const PublicRoadsPage = () => {
               )}
             </div>
 
-            {/* Filters */}
+            {/* Filters & Clear Action */}
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto text-xs">
               
               {/* Zone Filter */}
@@ -148,6 +156,17 @@ export const PublicRoadsPage = () => {
                 </select>
               </div>
 
+              {/* Clear Filters Button */}
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                >
+                  <FaTimes className="text-xs" />
+                  <span>Clear Filters</span>
+                </button>
+              )}
+
             </div>
 
           </div>
@@ -165,7 +184,15 @@ export const PublicRoadsPage = () => {
             ) : filteredRoads.length === 0 ? (
               <div className="p-12 text-center text-slate-400 space-y-3 glass-panel rounded-2xl border border-slate-800">
                 <FaExclamationTriangle className="text-3xl text-slate-600 mx-auto" />
-                <p className="text-sm font-semibold">No road corridors found matching current search or filters.</p>
+                <h3 className="text-sm font-bold text-slate-200">No roads found matching current search or filters.</h3>
+                <p className="text-xs text-slate-400">Try broadening your search term or clearing active filters.</p>
+                <button
+                  onClick={handleClearFilters}
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl text-xs transition-all inline-flex items-center space-x-1.5 mt-2"
+                >
+                  <FaTimes />
+                  <span>Clear Search & Filters</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
