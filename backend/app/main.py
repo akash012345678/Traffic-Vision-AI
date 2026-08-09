@@ -59,13 +59,14 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 from fastapi import APIRouter, Depends
 from app.middleware.dependencies import require_roles
-from app.routers import traffic, analytics, auth, admin, operator, assignments, zones, reports, roads, operators, alerts, videos, public, notifications, predictions
+from app.routers import traffic, analytics, auth, admin, operator, assignments, zones, reports, roads, operators, alerts, videos, public, notifications, predictions, routes
 
 # Register Routers (Base /api/v1)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(public.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(predictions.router, prefix=settings.API_V1_STR)
+app.include_router(routes.router, prefix=settings.API_V1_STR)
 app.include_router(roads.router, prefix=settings.API_V1_STR)
 app.include_router(operators.router, prefix=settings.API_V1_STR)
 app.include_router(alerts.router, prefix=settings.API_V1_STR)

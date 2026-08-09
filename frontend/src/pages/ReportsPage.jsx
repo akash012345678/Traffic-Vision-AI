@@ -136,14 +136,16 @@ export const ReportsPage = () => {
   const fetchPredictions = async () => {
     setIsPredLoading(true);
     try {
-      const [predRes, fcRes, ttRes] = await Promise.all([
+      const [predRes, fcRes, ttRes, routeRes] = await Promise.all([
         apiClient.get('/predictions/traffic'),
         apiClient.get('/predictions/congestion'),
-        apiClient.get('/predictions/travel-time')
+        apiClient.get('/predictions/travel-time'),
+        apiClient.get('/routes/alternatives?road_id=1')
       ]);
       setPredictionData(predRes);
       setForecastData(fcRes);
       setTravelTimeData(ttRes);
+      setRouteOptData(routeRes);
     } catch (err) {
       console.error("Prediction fetch error:", err);
       showError(err.message || 'Failed to load AI traffic predictions');
@@ -883,6 +885,65 @@ export const ReportsPage = () => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* AI Route Optimization & Alternate Corridor Matrix Section (Milestone 2 Phase 4) */}
+            <div className="space-y-4 pt-4 border-t border-slate-800">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <FaRoute className="text-emerald-400" />
+                  <span>AI Route Optimization & Alternate Corridor Matrix</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono px-2 py-0.5 rounded-full font-bold">
+                    Dijkstra Graph Algorithm
+                  </span>
+                </h3>
+                <span className="text-xs font-mono text-slate-400">
+                  Optimization Metric: <strong className="text-emerald-300">Minimizes (Travel Time + Delay + Congestion Penalty)</strong>
+                </span>
+              </div>
+
+              {routeOptData && routeOptData.recommendation_available ? (
+                <div className="glass-panel p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/10 space-y-3 font-mono">
+                  <div className="flex justify-between items-center border-b border-emerald-500/20 pb-3">
+                    <div>
+                      <span className="text-xs font-bold text-teal-400 block">{routeOptData.road_code}</span>
+                      <h4 className="text-base font-bold text-slate-100 font-sans">{routeOptData.road_name} ({routeOptData.zone})</h4>
+                    </div>
+                    <span className="text-xs font-bold bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-lg border border-emerald-500/30">
+                      Estimated Time Saved: {routeOptData.time_saved_minutes} mins
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                    <div className="p-3.5 bg-slate-950/90 rounded-xl border border-slate-800 space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-sans uppercase font-bold block">Current Congested Corridor</span>
+                      <h5 className="font-bold text-slate-100 font-sans">{routeOptData.current_route?.road_name}</h5>
+                      <div className="flex items-center justify-between text-[11px] pt-1">
+                        <span className="text-amber-400">Travel Time: <strong>{routeOptData.current_route?.travel_time_minutes} min</strong></span>
+                        <StatusBadge status={routeOptData.current_route?.congestion} type={routeOptData.current_route?.congestion === 'HIGH' || routeOptData.current_route?.congestion === 'CRITICAL' ? 'red' : 'amber'} />
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-emerald-950/40 rounded-xl border border-emerald-500/40 space-y-1.5">
+                      <span className="text-[10px] text-emerald-400 font-sans uppercase font-bold block">Traffic-Optimal Alternate Corridor</span>
+                      <h5 className="font-bold text-emerald-300 font-sans">{routeOptData.recommended_alternative?.road_name}</h5>
+                      <div className="flex items-center justify-between text-[11px] pt-1">
+                        <span className="text-emerald-400">Travel Time: <strong>{routeOptData.recommended_alternative?.travel_time_minutes} min</strong></span>
+                        <StatusBadge status={routeOptData.recommended_alternative?.congestion} type={routeOptData.recommended_alternative?.congestion === 'HIGH' || routeOptData.recommended_alternative?.congestion === 'CRITICAL' ? 'red' : 'green'} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-300 font-sans bg-slate-900/90 p-3 rounded-xl border border-slate-800 leading-relaxed">
+                    <strong className="text-emerald-400 font-mono block text-[10px] uppercase mb-1">OPTIMIZATION RATIONALE & DIJKSTRA EVALUATION</strong>
+                    {routeOptData.recommendation_explanation}
+                  </p>
+                </div>
+              ) : (
+                <div className="p-6 text-center glass-panel rounded-xl border border-slate-800 text-slate-400 text-xs font-mono">
+                  No faster alternative route currently available. All corridor paths are operating at optimal capacity.
+                </div>
+              )}
             </div>
 
           </div>

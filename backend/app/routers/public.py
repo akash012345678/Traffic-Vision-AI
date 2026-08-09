@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Any
@@ -438,13 +438,31 @@ def get_public_congestion_forecasts(
     """
     return get_congestion_forecasts(db, road_id=road_id, is_public_safe=True)
 
-@router.get("/travel-time")
-def get_public_travel_time_estimates(
-    road_id: int = None,
+from app.services.route_optimizer import get_alternate_route_recommendation, optimize_route
+
+@router.get("/routes/alternatives")
+def get_public_alternate_route_recommendation(
+    road_id: int = Query(..., description="Selected Road Corridor ID"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Public Read-Only Endpoint: Returns corridor travel-time estimates and 15m delay predictions.
-    Calculates exact transit time from distance (km) / speed (km/h) * 60.
+    Public Read-Only Endpoint: Returns alternate corridor recommendations and time saved.
     """
-    return get_travel_time_estimates(db, road_id=road_id, is_public_safe=True)
+    res = get_alternate_route_recommendation(db, road_id, is_public_safe=True)
+    if res.get("status") == "Road Not Found":
+        raise HTTPException(status_code=404, detail=res.get("message"))
+    return res
+
+@router.get("/routes/optimize")
+def get_public_optimized_route(
+    origin_road_id: int = Query(..., description="Origin Road Corridor ID"),
+    destination_road_id: int = Query(..., description="Destination Road Corridor ID"),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Public Read-Only Endpoint: Returns shortest traffic-weighted route using Dijkstra's algorithm.
+    """
+    res = optimize_route(db, origin_road_id, destination_road_id, is_public_safe=True)
+    if not res.get("route_found", True) and res.get("status") == "Invalid Endpoint":
+        raise HTTPException(status_code=404, detail=res.get("message"))
+    return res
