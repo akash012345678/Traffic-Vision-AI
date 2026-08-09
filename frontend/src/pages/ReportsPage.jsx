@@ -176,36 +176,80 @@ export const ReportsPage = () => {
 
   // CSV Report Export Handler
   const handleExportCSV = () => {
-    if (!trafficReports?.road_reports || trafficReports.road_reports.length === 0) {
-      showError('No report data available for export.');
-      return;
-    }
+    let headers = [];
+    let rows = [];
+    let filename = `TrafficVision_AI_Telemetry_Report_${new Date().toISOString().slice(0,10)}.csv`;
 
-    const headers = ['Road Code', 'Road Name', 'Zone', 'Vehicle Volume', 'Avg Speed (km/h)', 'Congestion Level', 'Cars', 'Bikes', 'Buses', 'Trucks', 'Last Updated'];
-    const rows = trafficReports.road_reports.map((r) => [
-      r.road_code,
-      `"${r.road_name}"`,
-      `"${r.zone}"`,
-      r.vehicle_count,
-      r.average_speed,
-      r.congestion_level,
-      r.car_count,
-      r.motorcycle_count,
-      r.bus_count,
-      r.truck_count,
-      r.last_updated_at
-    ]);
+    if (activeTab === 'predictions') {
+      const predReports = predictionData?.predictions || [];
+      if (predReports.length === 0) {
+        showError('No prediction report data available for export.');
+        return;
+      }
+
+      filename = `TrafficVision_AI_Prediction_Report_${new Date().toISOString().slice(0,10)}.csv`;
+      headers = [
+        'Road Code', 'Road Name', 'Zone', 
+        'Current Vehicles', 'Predicted Vehicles (15m)', 'Volume Growth', 
+        'Current Speed (km/h)', 'Predicted Speed (km/h)', 
+        'Current Congestion', 'Forecasted Congestion (15m)', 
+        'Distance (km)', 'Current Travel Time (min)', 'Forecasted Travel Time (min)', 'Delay (min)', 
+        'Horizon', 'Generated At'
+      ];
+
+      rows = predReports.map((p) => {
+        const est = (travelTimeData?.estimates || []).find(e => e.road_id === p.road_id) || {};
+        return [
+          p.road_code,
+          `"${p.road_name}"`,
+          `"${p.zone}"`,
+          p.current_vehicle_count,
+          p.predicted_vehicle_count,
+          p.volume_change,
+          p.current_average_speed,
+          p.predicted_average_speed,
+          p.current_congestion,
+          p.predicted_congestion,
+          est.distance_km || 2.5,
+          est.current_travel_time_minutes || 'N/A',
+          est.predicted_travel_time_minutes || 'N/A',
+          est.current_delay_minutes || 0.0,
+          `"15 Minutes Ahead"`,
+          p.predicted_for_time || new Date().toISOString()
+        ];
+      });
+    } else {
+      if (!trafficReports?.road_reports || trafficReports.road_reports.length === 0) {
+        showError('No report data available for export.');
+        return;
+      }
+
+      headers = ['Road Code', 'Road Name', 'Zone', 'Vehicle Volume', 'Avg Speed (km/h)', 'Congestion Level', 'Cars', 'Bikes', 'Buses', 'Trucks', 'Last Updated'];
+      rows = trafficReports.road_reports.map((r) => [
+        r.road_code,
+        `"${r.road_name}"`,
+        `"${r.zone}"`,
+        r.vehicle_count,
+        r.average_speed,
+        r.congestion_level,
+        r.car_count,
+        r.motorcycle_count,
+        r.bus_count,
+        r.truck_count,
+        r.last_updated_at
+      ]);
+    }
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `TrafficVision_AI_Telemetry_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    showSuccess('Traffic telemetry report exported to CSV', 'Export Complete');
+    showSuccess('Traffic report exported to CSV', 'Export Complete');
   };
 
   const summary = trafficReports?.summary || {};
