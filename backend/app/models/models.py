@@ -173,3 +173,17 @@ class UploadedVideo(Base):
 
     # Relationship
     road = relationship("Road", back_populates="uploaded_videos")
+
+
+class UserFavoriteRoad(Base):
+    __tablename__ = "user_favorite_roads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    road_id = Column(Integer, ForeignKey("roads.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User")
+    road = relationship("Road")
+

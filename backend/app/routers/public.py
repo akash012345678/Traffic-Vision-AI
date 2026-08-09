@@ -5,7 +5,8 @@ from typing import List, Dict, Any
 from datetime import datetime, timezone
 
 from app.database.session import get_db
-from app.models.models import Road, TrafficData, Alert, Zone
+from app.models.models import Road, TrafficData, Alert, Zone, UserFavoriteRoad, User
+from app.middleware.dependencies import get_current_user
 
 router = APIRouter(prefix="/public", tags=["Public Transparency Portal"])
 
@@ -236,3 +237,97 @@ def get_public_map_data(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
         })
 
     return nodes
+
+@router.get("/me/favorites")
+def get_user_favorite_roads(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """
+    Authenticated Public Endpoint: Returns favorite corridors for the logged-in user.
+    """
+    favs = db.query(UserFavoriteRoad).filter(UserFavoriteRoad.user_id == current_user.id).all()
+    fav_road_ids = [f.road_id for f in favs]
+
+    if not fav_road_ids:
+        return []
+
+    roads = db.query(Road).filter(Road.id.in_(fav_road_ids), Road.status == "Active").all()
+    results = []
+
+    for r in roads:
+        latest = (
+            db.query(TrafficData)
+            .filter(TrafficData.road_id == r.id)
+            .order_by(TrafficData.timestamp.desc(), TrafficData.id.desc())
+            .first()
+        )
+        active_alert_count = db.query(Alert).filter(Alert.road_id == r.id, Alert.status == "Active").count()
+
+        ts_iso = (
+            latest.timestamp.isoformat()
+            if (latest and latest.timestamp)
+            else (r.updated_at.isoformat() if r.updated_at else datetime.now(timezone.utc).isoformat())
+        )
+
+        results.append({
+            "id": r.id,
+            "road_code": r.road_code or f"RD-{r.id:03d}",
+            "road_name": r.road_name,
+            "zone": r.zone,
+            "latitude": r.latitude,
+            "longitude": r.longitude,
+            "vehicle_count": latest.vehicle_count if latest else 0,
+            "average_speed": latest.average_speed if latest else float(r.speed_limit or 60),
+            "congestion_level": (latest.congestion_level if latest else "LOW").upper(),
+            "active_alerts_count": active_alert_count,
+            "last_updated_at": ts_iso,
+            "is_favorite": True
+        })
+
+    return results
+
+@router.post("/me/favorites/{road_id}")
+def add_user_favorite_road(
+    road_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Authenticated Public Endpoint: Adds a road corridor to the logged-in user's favorites.
+    """
+    road = db.query(Road).filter(Road.id == road_id).first()
+    if not road:
+        raise HTTPException(status_code=404, detail="Road corridor not found.")
+
+    existing = db.query(UserFavoriteRoad).filter(
+        UserFavoriteRoad.user_id == current_user.id,
+        UserFavoriteRoad.road_id == road_id
+    ).first()
+
+    if not existing:
+        new_fav = UserFavoriteRoad(user_id=current_user.id, road_id=road_id)
+        db.add(new_fav)
+        db.commit()
+
+    return {"message": "Corridor added to favorites successfully.", "road_id": road_id, "is_favorite": True}
+
+@router.delete("/me/favorites/{road_id}")
+def remove_user_favorite_road(
+    road_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Authenticated Public Endpoint: Removes a road corridor from the logged-in user's favorites.
+    """
+    existing = db.query(UserFavoriteRoad).filter(
+        UserFavoriteRoad.user_id == current_user.id,
+        UserFavoriteRoad.road_id == road_id
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        db.commit()
+
+    return {"message": "Corridor removed from favorites successfully.", "road_id": road_id, "is_favorite": False}

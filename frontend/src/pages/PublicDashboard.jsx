@@ -57,19 +57,47 @@ export const PublicDashboard = () => {
 
   useEffect(() => {
     fetchPublicData();
+    if (isAuthenticated) {
+      apiClient.get('/public/me/favorites')
+        .then((res) => {
+          if (Array.isArray(res)) {
+            const favIds = res.map(r => r.id);
+            setFavorites(favIds);
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(favIds));
+            } catch (e) {}
+          }
+        })
+        .catch(() => {});
+    }
     const interval = setInterval(fetchPublicData, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated, storageKey]);
 
-  const toggleFavorite = (roadId) => {
+  const toggleFavorite = async (roadId) => {
+    const isFav = favorites.includes(roadId);
+    
+    // Optimistic UI update
     setFavorites((prev) => {
       const prevArr = Array.isArray(prev) ? prev : [];
-      const next = prevArr.includes(roadId) ? prevArr.filter((id) => id !== roadId) : [...prevArr, roadId];
+      const next = isFav ? prevArr.filter((id) => id !== roadId) : [...prevArr, roadId];
       try {
         localStorage.setItem(storageKey, JSON.stringify(next));
       } catch (e) {}
       return next;
     });
+
+    if (isAuthenticated) {
+      try {
+        if (isFav) {
+          await apiClient.delete(`/public/me/favorites/${roadId}`);
+        } else {
+          await apiClient.post(`/public/me/favorites/${roadId}`);
+        }
+      } catch (err) {
+        console.warn("Could not sync favorite with backend:", err);
+      }
+    }
   };
 
   const getCongestionType = (level) => {
