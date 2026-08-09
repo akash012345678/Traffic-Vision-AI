@@ -187,3 +187,23 @@ class UserFavoriteRoad(Base):
     user = relationship("User")
     road = relationship("Road")
 
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    alert_id = Column(Integer, ForeignKey("alerts.id", ondelete="CASCADE"), nullable=True, index=True)
+    notification_type = Column(String(100), default="TRAFFIC_ALERT", nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    severity = Column(String(50), default="MODERATE", nullable=False)
+    is_read = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User")
+    alert = relationship("Alert")
+
+

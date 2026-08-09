@@ -16,9 +16,7 @@ import {
   FaGlobe,
   FaUserPlus
 } from 'react-icons/fa';
-import { useAuth } from '../../contexts/AuthContext';
-import { StatusBadge } from './StatusBadge';
-import apiClient from '../../services/api';
+import { NotificationBell } from './NotificationBell';
 
 export const Navbar = () => {
   const location = useLocation();
@@ -26,30 +24,8 @@ export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Live Supabase Alerts state for Notifications Bell
-  const [liveAlerts, setLiveAlerts] = useState([]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchLiveAlerts = async () => {
-      try {
-        const res = await apiClient.get('/alerts', { params: { status: 'ACTIVE', page_size: 5 } });
-        const list = Array.isArray(res) ? res : (res.items || []);
-        setLiveAlerts(list);
-      } catch (err) {
-        // Silent catch for background notification poll
-      }
-    };
-
-    fetchLiveAlerts();
-    const timer = setInterval(fetchLiveAlerts, 10000);
-    return () => clearInterval(timer);
-  }, [isAuthenticated]);
 
   const handleLogout = () => {
     logout();
@@ -113,61 +89,8 @@ export const Navbar = () => {
             {isAuthenticated ? (
               <div className="flex items-center space-x-3 relative">
                 
-                {/* Notifications Bell */}
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setShowNotifications(!showNotifications);
-                      setShowProfileMenu(false);
-                    }}
-                    className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-teal-400 relative transition-colors"
-                    title="Live Supabase Active Incident Alerts"
-                  >
-                    <FaBell className="text-sm" />
-                    {liveAlerts.length > 0 && (
-                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                    )}
-                  </button>
-
-                  {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-3 space-y-2 font-sans">
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                        <span className="text-xs font-bold text-slate-100">Live Active Alerts</span>
-                        <span className="text-[10px] text-amber-400 font-mono">{liveAlerts.length} Active</span>
-                      </div>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {liveAlerts.length === 0 ? (
-                          <div className="p-3 text-center text-slate-500 text-xs italic">
-                            No active incident alerts registered in Supabase.
-                          </div>
-                        ) : (
-                          liveAlerts.map((a) => (
-                            <div 
-                              key={a.id} 
-                              onClick={() => {
-                                setShowNotifications(false);
-                                if (user?.role === 'Admin') navigate('/admin/alerts');
-                                else navigate('/operator/alerts');
-                              }}
-                              className="p-2.5 bg-slate-950/80 hover:bg-slate-900 rounded-lg border border-slate-800 text-xs cursor-pointer transition-colors"
-                            >
-                              <div className="flex justify-between items-center mb-0.5 font-mono">
-                                <span className="font-bold text-amber-300">
-                                  #{a.id.toString().padStart(3, '0')} • {a.alert_type}
-                                </span>
-                                <span className="text-[9px] text-rose-400 uppercase font-semibold">{a.severity}</span>
-                              </div>
-                              <p className="text-[11px] text-slate-300 font-sans">{a.road?.road_name || 'City Corridor'} ({a.road?.zone || 'Zone Alpha'})</p>
-                              <span className="text-[9px] text-slate-500 block font-mono mt-0.5">
-                                {a.created_at ? new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
-                              </span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                {/* Real-Time Scoped Notification Workflow Bell */}
+                <NotificationBell />
 
                 {/* Profile Avatar Dropdown */}
                 <div className="relative">
