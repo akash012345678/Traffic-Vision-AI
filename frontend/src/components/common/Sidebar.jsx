@@ -11,7 +11,8 @@ import {
   FaSignOutAlt,
   FaLayerGroup,
   FaExchangeAlt,
-  FaChartBar
+  FaChartBar,
+  FaFire
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -27,6 +28,7 @@ export const Sidebar = ({ role = 'Operator' }) => {
 
   const adminMenuItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: FaChartPie },
+    { label: 'Traffic Heatmap', path: '/admin/heatmap', icon: FaFire },
     { label: 'Road Management', path: '/admin/roads', icon: FaRoad },
     { label: 'Zone Management', path: '/admin/zones', icon: FaLayerGroup },
     { label: 'Operator Management', path: '/admin/operators', icon: FaUserTie },
@@ -39,6 +41,7 @@ export const Sidebar = ({ role = 'Operator' }) => {
 
   const operatorMenuItems = [
     { label: 'Dashboard', path: '/operator/dashboard', icon: FaChartPie },
+    { label: 'Traffic Heatmap', path: '/operator/heatmap', icon: FaFire },
     { label: 'Assigned Roads', path: '/operator/roads', icon: FaRoad },
     { label: 'Traffic Monitoring', path: '/operator/monitoring', icon: FaVideo },
     { label: 'Alerts', path: '/operator/alerts', icon: FaExclamationTriangle },

@@ -18,6 +18,7 @@ import { ZoneManagementPage } from './pages/ZoneManagementPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AdminAlertsPage } from './pages/AdminAlertsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { AdminHeatmapPage } from './pages/AdminHeatmapPage';
 
 import { OperatorDashboard } from './pages/OperatorDashboard';
 import { OperatorRoadsPage } from './pages/OperatorRoadsPage';
@@ -68,6 +69,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['Admin']}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/heatmap"
+                element={
+                  <ProtectedRoute allowedRoles={['Admin']}>
+                    <AdminHeatmapPage role="Admin" />
                   </ProtectedRoute>
                 }
               />
@@ -151,6 +160,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['Operator', 'Admin']}>
                     <OperatorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/operator/heatmap"
+                element={
+                  <ProtectedRoute allowedRoles={['Operator', 'Admin']}>
+                    <AdminHeatmapPage role="Operator" />
                   </ProtectedRoute>
                 }
               />

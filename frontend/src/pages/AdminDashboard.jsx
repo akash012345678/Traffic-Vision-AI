@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -12,7 +13,7 @@ import {
 } from 'recharts';
 import { 
   FaRoad, FaUserTie, FaVideo, FaExclamationTriangle, FaTachometerAlt, 
-  FaCar, FaCheckCircle, FaSync, FaShieldAlt, FaHistory 
+  FaCar, FaCheckCircle, FaSync, FaShieldAlt, FaHistory, FaFire 
 } from 'react-icons/fa';
 
 export const AdminDashboard = () => {
@@ -98,6 +99,14 @@ export const AdminDashboard = () => {
                 <FaCheckCircle /> {summary.system_status || 'Optimal'}
               </span>
             </div>
+
+            <Link
+              to="/admin/heatmap"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold flex items-center space-x-2 transition-all shadow-md shadow-amber-500/20 shrink-0"
+            >
+              <FaFire className="text-sm" />
+              <span>Traffic Heatmap Console</span>
+            </Link>
             
             <Button variant="secondary" size="sm" onClick={() => fetchControlCenterStats(true)} className="space-x-1.5">
               <FaSync className={isLoading ? 'animate-spin' : ''} />
