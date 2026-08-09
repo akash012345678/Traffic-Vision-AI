@@ -10,6 +10,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['react-is', 'recharts', 'leaflet', 'react-leaflet'],
+  },
   server: {
     port: 5173,
     host: true,
