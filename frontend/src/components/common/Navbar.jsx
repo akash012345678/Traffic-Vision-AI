@@ -17,6 +17,8 @@ import {
   FaUserPlus
 } from 'react-icons/fa';
 import { NotificationBell } from './NotificationBell';
+import { useAuth } from '../../contexts/AuthContext';
+import { StatusBadge } from './StatusBadge';
 
 export const Navbar = () => {
   const location = useLocation();
