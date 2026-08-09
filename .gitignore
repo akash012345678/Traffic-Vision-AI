@@ -46,4 +46,7 @@ backend/uploads/
 *.mov
 *.mkv
 
-
+# Weights & Model Artifacts
+*.pt
+*.onnx
+*.engine
