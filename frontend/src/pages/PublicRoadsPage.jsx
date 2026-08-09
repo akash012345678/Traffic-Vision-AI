@@ -286,6 +286,47 @@ export const PublicRoadsPage = () => {
                   </div>
                 </div>
 
+                {/* Telemetry Snapshot Timeline (Historical Recent Trend) */}
+                {Array.isArray(roadDetail.telemetry_history) && roadDetail.telemetry_history.length > 0 && (
+                  <div className="space-y-2 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Recent Telemetry Snapshot History
+                    </span>
+                    <div className="overflow-x-auto rounded-lg border border-slate-800">
+                      <table className="w-full text-left text-[11px] font-mono text-slate-300">
+                        <thead className="bg-slate-900 text-slate-400 border-b border-slate-800 uppercase text-[9px]">
+                          <tr>
+                            <th className="py-2 px-2.5">Time</th>
+                            <th className="py-2 px-2.5">Vehicles</th>
+                            <th className="py-2 px-2.5">Speed</th>
+                            <th className="py-2 px-2.5 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {roadDetail.telemetry_history.map((h, idx) => (
+                            <tr key={h.id || idx} className="hover:bg-slate-900/40">
+                              <td className="py-1.5 px-2.5 text-slate-400">
+                                {h.timestamp ? new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
+                              </td>
+                              <td className="py-1.5 px-2.5 font-bold text-slate-200">{h.vehicle_count} veh</td>
+                              <td className="py-1.5 px-2.5 text-emerald-400">{h.average_speed} km/h</td>
+                              <td className="py-1.5 px-2.5 text-right">
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                                  h.congestion_level === 'LOW' ? 'bg-emerald-500/10 text-emerald-400' :
+                                  h.congestion_level === 'MODERATE' ? 'bg-amber-500/10 text-amber-400' :
+                                  'bg-rose-500/10 text-rose-400'
+                                }`}>
+                                  {h.congestion_level}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {/* Physical Specifications */}
                 <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1.5 text-xs text-slate-400 font-mono">
                   <div className="flex justify-between">

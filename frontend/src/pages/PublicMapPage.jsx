@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  FaMapMarkedAlt, FaRoad, FaTachometerAlt, FaCar, FaSync, FaExclamationTriangle, 
+  FaMapMarkedAlt, FaRoad, FaTachometerAlt, FaCar, FaMotorcycle, FaBus, FaTruck, FaSync, FaExclamationTriangle, 
   FaInfoCircle, FaSun, FaMoon, FaGlobeAmericas 
 } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -116,12 +116,28 @@ export const PublicMapPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSelectRoad = (node) => {
+  const [roadDetail, setRoadDetail] = useState(null);
+
+  const handleSelectRoad = async (node) => {
     if (node && node.latitude && node.longitude) {
       setSelectedNode(node);
       setMapCenter([node.latitude, node.longitude]);
+      try {
+        const detail = await apiClient.get(`/public/roads/${node.id}`);
+        setRoadDetail(detail);
+      } catch (err) {
+        console.warn("Could not fetch detailed telemetry for road:", err);
+      }
     }
   };
+
+  useEffect(() => {
+    if (selectedNode && selectedNode.id) {
+      apiClient.get(`/public/roads/${selectedNode.id}`)
+        .then((detail) => setRoadDetail(detail))
+        .catch(() => {});
+    }
+  }, [selectedNode?.id]);
 
   const getCongestionType = (level) => {
     const lvl = (level || 'LOW').toString().toUpperCase();
@@ -358,15 +374,95 @@ export const PublicMapPage = () => {
                     <span className="text-slate-400 flex items-center gap-1.5">
                       <FaCar className="text-teal-400" /> Vehicle Volume
                     </span>
-                    <strong className="font-mono text-slate-100 text-sm">{selectedNode.vehicle_count} veh</strong>
+                    <strong className="font-mono text-slate-100 text-sm">{roadDetail?.vehicle_count ?? selectedNode.vehicle_count} veh</strong>
                   </div>
 
                   <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex items-center justify-between">
                     <span className="text-slate-400 flex items-center gap-1.5">
                       <FaTachometerAlt className="text-emerald-400" /> Live Average Speed
                     </span>
-                    <strong className="font-mono text-emerald-400 text-sm">{selectedNode.average_speed} km/h</strong>
+                    <strong className="font-mono text-emerald-400 text-sm">{roadDetail?.average_speed ?? selectedNode.average_speed} km/h</strong>
                   </div>
+
+                  {/* Vehicle Class Breakdown */}
+                  {roadDetail && (
+                    <div className="space-y-2 text-xs pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Detected Vehicle Breakdown
+                      </span>
+                      
+                      <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                        <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <FaCar className="text-emerald-400" /> Cars
+                          </span>
+                          <strong className="text-slate-100">{roadDetail.car_count || 0}</strong>
+                        </div>
+
+                        <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <FaMotorcycle className="text-amber-400" /> Bikes
+                          </span>
+                          <strong className="text-slate-100">{roadDetail.motorcycle_count || 0}</strong>
+                        </div>
+
+                        <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <FaBus className="text-blue-400" /> Buses
+                          </span>
+                          <strong className="text-slate-100">{roadDetail.bus_count || 0}</strong>
+                        </div>
+
+                        <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <FaTruck className="text-purple-400" /> Trucks
+                          </span>
+                          <strong className="text-slate-100">{roadDetail.truck_count || 0}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Telemetry Snapshot Timeline */}
+                  {roadDetail && Array.isArray(roadDetail.telemetry_history) && roadDetail.telemetry_history.length > 0 && (
+                    <div className="space-y-1.5 text-xs pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Recent Telemetry History
+                      </span>
+                      <div className="overflow-x-auto rounded-lg border border-slate-800">
+                        <table className="w-full text-left text-[10px] font-mono text-slate-300">
+                          <thead className="bg-slate-900 text-slate-400 border-b border-slate-800 uppercase text-[9px]">
+                            <tr>
+                              <th className="py-1.5 px-2">Time</th>
+                              <th className="py-1.5 px-2">Veh</th>
+                              <th className="py-1.5 px-2">Speed</th>
+                              <th className="py-1.5 px-2 text-right">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {roadDetail.telemetry_history.map((h, idx) => (
+                              <tr key={h.id || idx} className="hover:bg-slate-900/40">
+                                <td className="py-1 px-2 text-slate-400">
+                                  {h.timestamp ? new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
+                                </td>
+                                <td className="py-1 px-2 font-bold text-slate-200">{h.vehicle_count}</td>
+                                <td className="py-1 px-2 text-emerald-400">{h.average_speed}</td>
+                                <td className="py-1 px-2 text-right">
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                                    h.congestion_level === 'LOW' ? 'bg-emerald-500/10 text-emerald-400' :
+                                    h.congestion_level === 'MODERATE' ? 'bg-amber-500/10 text-amber-400' :
+                                    'bg-rose-500/10 text-rose-400'
+                                  }`}>
+                                    {h.congestion_level}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1 font-mono text-[11px] text-slate-400">
                     <div className="flex justify-between">
@@ -379,7 +475,7 @@ export const PublicMapPage = () => {
                     </div>
                     <div className="flex justify-between pt-1 border-t border-slate-800">
                       <span>Last Updated:</span>
-                      <strong className="text-teal-400">{formatTimeSafely(selectedNode.last_updated_at)}</strong>
+                      <strong className="text-teal-400">{formatTimeSafely(roadDetail?.last_updated_at || selectedNode.last_updated_at)}</strong>
                     </div>
                   </div>
                 </div>

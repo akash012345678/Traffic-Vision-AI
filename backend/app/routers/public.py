@@ -134,6 +134,25 @@ def get_public_road_detail(road_id: int, db: Session = Depends(get_db)) -> Dict[
         .first()
     )
 
+    recent_records = (
+        db.query(TrafficData)
+        .filter(TrafficData.road_id == r.id)
+        .order_by(TrafficData.timestamp.desc(), TrafficData.id.desc())
+        .limit(5)
+        .all()
+    )
+
+    history = [
+        {
+            "id": item.id,
+            "timestamp": item.timestamp.isoformat() if item.timestamp else None,
+            "vehicle_count": item.vehicle_count or 0,
+            "average_speed": item.average_speed or 0.0,
+            "congestion_level": (item.congestion_level or "LOW").upper()
+        }
+        for item in recent_records
+    ]
+
     ts_iso = (
         latest.timestamp.isoformat()
         if (latest and latest.timestamp)
@@ -158,7 +177,8 @@ def get_public_road_detail(road_id: int, db: Session = Depends(get_db)) -> Dict[
         "average_speed": latest.average_speed if latest else float(r.speed_limit or 60),
         "congestion_level": (latest.congestion_level if latest else "LOW").upper(),
         "confidence": round(latest.confidence, 2) if (latest and latest.confidence is not None) else 0.85,
-        "last_updated_at": ts_iso
+        "last_updated_at": ts_iso,
+        "telemetry_history": history
     }
 
 @router.get("/alerts")
