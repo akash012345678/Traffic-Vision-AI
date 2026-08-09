@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   FaMapMarkedAlt, FaRoad, FaTachometerAlt, FaCar, FaMotorcycle, FaBus, FaTruck, FaSync, FaExclamationTriangle, 
   FaInfoCircle, FaSun, FaMoon, FaGlobeAmericas 
@@ -75,6 +76,9 @@ const createCongestionIcon = (level, code, isSelected) => {
 };
 
 export const PublicMapPage = () => {
+  const [searchParams] = useSearchParams();
+  const targetRoadId = searchParams.get('road_id');
+
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [mapCenter, setMapCenter] = useState([40.7128, -74.0060]); // NYC default center fallback
@@ -89,6 +93,16 @@ export const PublicMapPage = () => {
       const res = await apiClient.get('/public/roads');
       const list = Array.isArray(res) ? res : [];
       setNodes(list);
+
+      // Check if target road passed via URL
+      if (targetRoadId && list.length > 0) {
+        const found = list.find((item) => String(item.id) === String(targetRoadId));
+        if (found) {
+          setSelectedNode(found);
+          setMapCenter([found.latitude, found.longitude]);
+          return;
+        }
+      }
 
       // Auto-select first road if none selected yet
       if (list.length > 0) {

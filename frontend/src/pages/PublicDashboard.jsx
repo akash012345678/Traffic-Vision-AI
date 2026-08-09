@@ -424,7 +424,10 @@ export const PublicDashboard = () => {
             </div>
 
             {/* Card 6: Active Alerts */}
-            <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div 
+              onClick={() => navigate('/public/alerts')}
+              className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between cursor-pointer hover:border-amber-500/60 transition-all hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] font-bold uppercase tracking-wider">Active Advisories</span>
                 <FaExclamationTriangle className="text-amber-400 text-sm" />
