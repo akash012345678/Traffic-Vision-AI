@@ -11,7 +11,7 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 from app.database.session import SessionLocal, init_db
-from app.models.models import UploadedVideo, TrafficData
+from app.models.models import UploadedVideo, TrafficData, Road
 import imageio_ffmpeg
 
 ROAD_FILES = [
@@ -44,7 +44,9 @@ def fast_repair():
     print("=" * 80)
 
     for r_id, r_name, fname in ROAD_FILES:
-        print(f"\n[ROAD #{r_id}] {r_name} ({fname})")
+        db_road = db.query(Road).filter(Road.road_name == r_name).first()
+        real_road_id = db_road.id if db_road else r_id
+        print(f"\n[ROAD #{real_road_id}] {r_name} ({fname})")
         src_file = os.path.join(backend_dir, "uploads", "videos", fname)
         proc_file = os.path.join(backend_dir, "uploads", "processed", f"processed_{fname}")
 
@@ -80,7 +82,7 @@ def fast_repair():
         cap.release()
 
         # 2. Database Record in uploaded_videos
-        v_rec = db.query(UploadedVideo).filter(UploadedVideo.road_id == r_id).order_by(UploadedVideo.id.desc()).first()
+        v_rec = db.query(UploadedVideo).filter(UploadedVideo.road_id == real_road_id).order_by(UploadedVideo.id.desc()).first()
         file_sz = os.path.getsize(proc_file if os.path.exists(proc_file) else src_file) if os.path.exists(proc_file) or os.path.exists(src_file) else 1024
         
         if not v_rec:
@@ -95,7 +97,7 @@ def fast_repair():
                 duration_seconds=duration,
                 resolution=resolution,
                 status="PROCESSED",
-                road_id=r_id,
+                road_id=real_road_id,
                 uploaded_at=datetime.now(timezone.utc)
             )
             db.add(v_rec)
@@ -106,10 +108,10 @@ def fast_repair():
         video_id = v_rec.id
 
         # 3. Telemetry Interval Records in traffic_data
-        t_count = db.query(TrafficData).filter(TrafficData.road_id == r_id).count()
+        t_count = db.query(TrafficData).filter(TrafficData.road_id == real_road_id).count()
 
         if t_count == 0:
-            print(f"  [GENERATING TELEMETRY] Populating 1-second interval records for Road #{r_id}...")
+            print(f"  [GENERATING TELEMETRY] Populating 1-second interval records for Road #{real_road_id}...")
             num_seconds = min(int(duration), 300) # up to 300 1-sec records
             
             base_cars = random.randint(12, 28)
@@ -130,7 +132,7 @@ def fast_repair():
                 level = "LOW" if density_score < 25.0 else "MODERATE" if density_score < 50.0 else "HIGH" if density_score < 75.0 else "SEVERE"
 
                 t_record = TrafficData(
-                    road_id=r_id,
+                    road_id=real_road_id,
                     video_id=video_id,
                     video_name=fname,
                     video_timestamp=float(sec_idx),
@@ -152,7 +154,7 @@ def fast_repair():
         agg_t = db.execute(text("""
             SELECT AVG(vehicle_count), AVG(car_count), AVG(bus_count), AVG(truck_count), AVG(motorcycle_count), AVG(average_speed), AVG(confidence)
             FROM traffic_data WHERE road_id = :rid
-        """), {"rid": r_id}).fetchone()
+        """), {"rid": real_road_id}).fetchone()
 
         avg_cars = int(round(agg_t[1] or 20)) if agg_t else 20
         avg_buses = int(round(agg_t[2] or 2)) if agg_t else 2
@@ -175,7 +177,7 @@ def fast_repair():
         v_rec.processed_video_url = f"/uploads/processed/processed_{fname}"
 
         db.commit()
-        print(f"  [COMPLETE] Road #{r_id} DB status set to PROCESSED.")
+        print(f"  [COMPLETE] Road #{real_road_id} DB status set to PROCESSED.")
 
     print("\n" + "=" * 80)
     print("ALL 12 ROADS REPAIRED, RE-ENCODED, AND SYNCHRONIZED SUCCESSFULLY!")

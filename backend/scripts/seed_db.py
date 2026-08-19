@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database.session import engine, SessionLocal, Base, init_db
-from app.models.models import User, Road, TrafficData, Alert, Prediction, Zone, OperatorRoadAssignment
+from app.models.models import User, Road, TrafficData, Alert, Prediction, Zone, OperatorRoadAssignment, UploadedVideo
 from app.utils.security import hash_password
 
 def seed_database():
@@ -22,6 +22,7 @@ def seed_database():
         session.query(Prediction).delete()
         session.query(Alert).delete()
         session.query(TrafficData).delete()
+        session.query(UploadedVideo).delete()
         session.query(Road).delete()
         session.query(Zone).delete()
         session.query(User).delete()

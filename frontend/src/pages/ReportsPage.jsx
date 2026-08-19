@@ -68,6 +68,9 @@ export const ReportsPage = () => {
 
   // Machine Learning Traffic Prediction States
   const [predictionData, setPredictionData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
+  const [travelTimeData, setTravelTimeData] = useState(null);
+  const [routeOptData, setRouteOptData] = useState(null);
   const [isPredLoading, setIsPredLoading] = useState(false);
 
   const fetchAllReports = async (isManual = false) => {

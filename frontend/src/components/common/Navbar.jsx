@@ -97,10 +97,7 @@ export const Navbar = () => {
                 {/* Profile Avatar Dropdown */}
                 <div className="relative">
                   <button
-                    onClick={() => {
-                      setShowProfileMenu(!showProfileMenu);
-                      setShowNotifications(false);
-                    }}
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center space-x-2 p-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-teal-500/40 transition-colors"
                   >
                     <div className="w-7 h-7 rounded-full bg-teal-500/20 text-teal-300 font-bold flex items-center justify-center text-xs">
@@ -168,6 +165,41 @@ export const Navbar = () => {
           </div>
 
         </div>
+
+        {/* Mobile Navigation Dropdown for Console */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-800 bg-slate-950 p-4 space-y-2 text-xs">
+            {isAuthenticated && (user?.role || '').toUpperCase() === 'ADMIN' ? (
+              <>
+                <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Admin Dashboard</Link>
+                <Link to="/admin/heatmap" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Traffic Heatmap</Link>
+                <Link to="/admin/roads" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Road Management</Link>
+                <Link to="/admin/zones" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Zone Management</Link>
+                <Link to="/admin/operators" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Operator Management</Link>
+                <Link to="/admin/assignments" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Assignment Management</Link>
+                <Link to="/admin/monitoring" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Traffic Monitoring</Link>
+                <Link to="/admin/alerts" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Alerts</Link>
+                <Link to="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Reports</Link>
+                <Link to="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Settings</Link>
+              </>
+            ) : isAuthenticated ? (
+              <>
+                <Link to="/operator/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Operator Dashboard</Link>
+                <Link to="/operator/heatmap" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Traffic Heatmap</Link>
+                <Link to="/operator/roads" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Assigned Roads</Link>
+                <Link to="/operator/monitoring" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Traffic Monitoring</Link>
+                <Link to="/operator/alerts" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Alerts</Link>
+                <Link to="/operator/profile" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-900 font-semibold">Profile</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/public/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-teal-400 font-semibold">Public Portal</Link>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 font-semibold">Login</Link>
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-slate-200 font-semibold">Sign Up</Link>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );

@@ -4,6 +4,7 @@ import { StatusBadge } from './StatusBadge';
 import { Button } from '../ui/Button';
 import { useLiveTelemetry } from '../../hooks/useLiveTelemetry';
 import { AIVideoModal } from '../traffic/AIVideoModal';
+import apiClient from '../../services/api';
 import { 
   FaRoad, 
   FaTimes, 
@@ -24,8 +25,61 @@ import {
   FaBus,
   FaTruck,
   FaMotorcycle,
-  FaPlay
+  FaPlay,
+  FaRoute
 } from 'react-icons/fa';
+
+// Alternate Route Recommendation Card Sub-component
+const AlternateRouteCard = ({ targetRoadId }) => {
+  const [altRec, setAltRec] = useState(null);
+
+  useEffect(() => {
+    if (targetRoadId) {
+      apiClient.get(`/routes/alternatives?road_id=${targetRoadId}`)
+        .then(res => setAltRec(res))
+        .catch(() => setAltRec(null));
+    } else {
+      setAltRec(null);
+    }
+  }, [targetRoadId]);
+
+  if (!altRec || !altRec.recommendation_available) return null;
+
+  const curR = altRec.current_route || {};
+  const recR = altRec.recommended_alternative || {};
+
+  return (
+    <div className="glass-panel p-4 rounded-xl border border-amber-500/40 bg-amber-950/10 space-y-2.5 font-mono">
+      <div className="flex justify-between items-center border-b border-amber-500/20 pb-2">
+        <span className="text-xs font-bold text-amber-300 flex items-center gap-2">
+          <FaRoute className="text-amber-400" />
+          <span>Traffic-Aware Alternate Corridor</span>
+        </span>
+        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+          Saves {altRec.time_saved_minutes} min
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+        <div>
+          <span className="text-[9px] text-slate-500 block uppercase">CURRENT CORRIDOR</span>
+          <span className="font-bold text-slate-200 block truncate">{curR.road_name}</span>
+          <span className="text-[10px] text-amber-400 block">{curR.travel_time_minutes} min ({curR.congestion})</span>
+        </div>
+
+        <div className="border-l border-slate-800 pl-2">
+          <span className="text-[9px] text-emerald-400 font-bold block uppercase">RECOMMENDED ALT</span>
+          <span className="font-bold text-emerald-300 block truncate">{recR.road_name}</span>
+          <span className="text-[10px] text-emerald-400 block">{recR.travel_time_minutes} min ({recR.congestion})</span>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-slate-300 font-sans leading-relaxed bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+        {altRec.recommendation_explanation}
+      </p>
+    </div>
+  );
+};
 
 export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, error, onRetry }) => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -337,53 +391,7 @@ export const RoadDetailsSidePanel = ({ isOpen, onClose, roadData, isLoading, err
                 })()}
 
                 {/* ALTERNATE ROUTE RECOMMENDATION CARD (MILESTONE 2 PHASE 4) */}
-                {(() => {
-                  const [altRec, setAltRec] = useState(null);
-                  useEffect(() => {
-                    if (targetRoadId) {
-                      apiClient.get(`/routes/alternatives?road_id=${targetRoadId}`)
-                        .then(res => setAltRec(res))
-                        .catch(() => setAltRec(null));
-                    }
-                  }, [targetRoadId]);
-
-                  if (!altRec || !altRec.recommendation_available) return null;
-
-                  const curR = altRec.current_route || {};
-                  const recR = altRec.recommended_alternative || {};
-
-                  return (
-                    <div className="glass-panel p-4 rounded-xl border border-amber-500/40 bg-amber-950/10 space-y-2.5 font-mono">
-                      <div className="flex justify-between items-center border-b border-amber-500/20 pb-2">
-                        <span className="text-xs font-bold text-amber-300 flex items-center gap-2">
-                          <FaRoute className="text-amber-400" />
-                          <span>Traffic-Aware Alternate Corridor</span>
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                          Saves {altRec.time_saved_minutes} min
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/80 p-3 rounded-lg border border-slate-800">
-                        <div>
-                          <span className="text-[9px] text-slate-500 block uppercase">CURRENT CORRIDOR</span>
-                          <span className="font-bold text-slate-200 block truncate">{curR.road_name}</span>
-                          <span className="text-[10px] text-amber-400 block">{curR.travel_time_minutes} min ({curR.congestion})</span>
-                        </div>
-
-                        <div className="border-l border-slate-800 pl-2">
-                          <span className="text-[9px] text-emerald-400 font-bold block uppercase">RECOMMENDED ALT</span>
-                          <span className="font-bold text-emerald-300 block truncate">{recR.road_name}</span>
-                          <span className="text-[10px] text-emerald-400 block">{recR.travel_time_minutes} min ({recR.congestion})</span>
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-slate-300 font-sans leading-relaxed bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
-                        {altRec.recommendation_explanation}
-                      </p>
-                    </div>
-                  );
-                })()}
+                <AlternateRouteCard targetRoadId={targetRoadId} />
 
                 {/* AI VEHICLE BREAKDOWN PANEL (only shown when AI data is available) */}
                 {currentTelemetry?.ai_status === 'ACTIVE' && (
